@@ -1,0 +1,4 @@
+lib/libnl_3_la-version.lo: lib/version.c /usr/include/stdc-predef.h \
+ include/netlink/version.h
+/usr/include/stdc-predef.h:
+include/netlink/version.h:
