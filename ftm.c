@@ -148,6 +148,12 @@ static int start_ftm(struct nl80211_state *state) {
 
     genlmsg_put(msg, 0, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
+
+    signed long long devidx = if_nametoindex("wlp3s0");
+    if (devidx == 0)
+        return 1;
+
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
     err = set_ftm_config(msg);
     if (err)
         return 1;
@@ -166,6 +172,9 @@ static int start_ftm(struct nl80211_state *state) {
         nl_recvmsgs(state->nl_sock, cb);
     if (err < 0) return 1;
     return 0;
+nla_put_failure:
+    fprintf(stderr, "building message failed\n");
+    return 2;
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
