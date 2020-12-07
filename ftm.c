@@ -110,6 +110,7 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     nla_put(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6 * sizeof(uint8_t), mac_addr);
 
     // TODO: set attributes
+    nla_nest_end(msg, peer);
 nla_put_failure:
     return 1;
 }
