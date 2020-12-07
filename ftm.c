@@ -1,5 +1,4 @@
 #include "ftm.h"
-#include "utilities.c"
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
                          void *arg) {
@@ -59,18 +58,7 @@ static int ack_handler(struct nl_msg *msg, void *arg) {
     return NL_STOP;
 }
 
-static int (*registered_handler)(struct nl_msg *, void *);
-// static void *registered_handler_data;
-
-void register_handler(int (*handler)(struct nl_msg *, void *)) {
-    registered_handler = handler;
-    // registered_handler_data = data;
-}
-
-int valid_handler(struct nl_msg *msg, void *arg) {
-    if (registered_handler)
-        return registered_handler(msg, registered_handler_data);
-
+static int no_seq_check(struct nl_msg *msg, void *arg) {
     return NL_OK;
 }
 
@@ -115,314 +103,136 @@ out_handle_destroy:
     return err;
 }
 
-static int handle_cmd(struct nl80211_state *state, int command,
-                      int (*handler)(struct nl80211_state *,
-                                     struct nl_msg *,
-                                     int, char **),
-                      int (*callback)(struct nl_msg *, void *),
-                      int argc, char **argv) {
+static int set_ftm_peer(struct nl_msg *msg, int index) {
+    struct nlattr *peer = nla_nest_start(msg, index);
+    uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // placeholder
+
+    nla_put(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6 * sizeof(uint8_t), mac_addr);
+
+    // TODO: set attributes
+nla_put_failure:
+    return 1;
+}
+
+static int set_ftm_config(struct nl_msg *msg) {
+    struct nlattr *pmsr = nla_nest_start(msg, NL80211_ATTR_PEER_MEASUREMENTS);
+    if (!pmsr)
+        return 1;
+    struct nlattr *peer = nla_nest_start(msg, NL80211_PMSR_ATTR_PEERS);
+    if (!peer)
+        return 1;
+    set_ftm_peer(msg, 0);
+    nla_nest_end(msg, peer);
+    nla_nest_end(msg, pmsr);
+    return 0;
+}
+
+static int start_ftm(struct nl80211_state *state) {
     int err;
-    struct nl_cb *cb;
-    struct nl_cb *s_cb;
-    struct nl_msg *msg;
+    struct nl_msg *msg = nlmsg_alloc();
+    if (!msg)
+        return 1;
 
-    msg = nlmsg_alloc();
-    if (!msg) {
-        fprintf(stderr, "failed to allocate netlink message\n");
-        return 2;
-    }
+    genlmsg_put(msg, 0, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
+                NL80211_CMD_PEER_MEASUREMENT_START, 0);
+    err = set_ftm_config(msg);
+    if (err)
+        return 1;
 
-    cb = nl_cb_alloc(NL_CB_DEFAULT);
-    s_cb = nl_cb_alloc(NL_CB_DEFAULT);
-    if (!cb || !s_cb) {
-        fprintf(stderr, "failed to allocate netlink callbacks\n");
-        err = 2;
-        goto out;
-    }
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
+    nl_socket_set_cb(state->nl_sock, cb);
 
-    // set nl80211 and command (e.g NL80211_CMD_PEER_MEASUREMENT_START)
-    genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0, command, 0);
+    nl_send_auto(state->nl_sock, msg);
 
-    if (handler) {
-        int err = handler(state, msg, argc, argv);
-        if (err)
-            goto out;
-    }
-
-    // set callback for current socket
-    nl_socket_set_cb(state->nl_sock, s_cb);
-
-    err = nl_send_auto(state->nl_sock, msg);
-    if (err < 0)
-        goto out;
-
-    if (callback)
-        register_handler(callback);
     err = 1;
-
     nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
     nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
     nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
-    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, NULL);
 
-   /* Repeatedly calls nl_recv() or the respective replacement if provided
-    * by the application (see nl_cb_overwrite_recv()) and parses the
-    * received data as netlink messages. Stops reading if one of the
-    * callbacks returns NL_STOP or nl_recv returns either 0 or a negative error code.
-    */
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
-
-out:
-    nl_cb_put(cb);
-    nl_cb_put(s_cb);
-    nlmsg_free(msg);
-    return err;
-}
-
-static int ftm_request_start(struct nl80211_state *state,
-                       struct nl_msg *msg,
-                       int argc,
-                       char **argv) {
-    int err;
-    err = handle_cmd(state,
-                     NL80211_CMD_PEER_MEASUREMENT_START,
-                     ftm_request_send,
-                     NULL,  // callback
-                     argc,
-                     argv);
-    if (err)
-        return err;
-    
-    prepare_result_cb();
+    if (err < 0) return 1;
     return 0;
 }
 
-static int prepare_result_cb() {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
-    if (!cb) {
-        fprintf(stderr, "failed to allocate netlink callbacks\n");
-        return NULL;
-    }
-
-    int status = 1;
-    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, &status);
-    // TODO
-}
-
-static int parse_ftm_result(struct nl_msg *msg, void *arg) {
+static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+    if (gnlh->cmd != NL80211_CMD_PEER_MEASUREMENT_RESULT)
+        return -1;
+
     struct nlattr *tb[NL80211_ATTR_MAX + 1];
-    nla_parse(tb, NL80211_ATTR_MAX,
-              genlmsg_attrdata(gnlh, 0),
-              genlmsg_attrlen(gnlh, 0),
-              NULL, NULL);  // get all attributes at highest level
-    if (!tb[NL80211_ATTR_COOKIE]) 
-        return 1;  //no cookie
-    if (!tb[NL80211_ATTR_PEER_MEASUREMENTS]) 
-        return 2;  //no measurement data
-
-    // Peer measurement attributes (enum nl80211_peer_measurement_attrs)
-    struct nlattr *pmsr_attrs[NL80211_PMSR_ATTR_MAX + 1];
-    int err = nla_parse_nested(pmsr_attrs, NL80211_PMSR_ATTR_MAX,
-                               tb[NL80211_ATTR_PEER_MEASUREMENTS],
-                               NULL, NULL);
+    int err;
+    err = nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+                    genlmsg_attrlen(gnlh, 0), NULL, NULL);
     if (err)
-        return 3;  
-    
-    struct nlattr *peer_attrs;//failed to parse measurement data
+        goto nla_put_failure;
+    struct nlattr *pmsr[NL80211_PMSR_ATTR_MAX + 1];
+    err = nla_parse_nested(pmsr, NL80211_PMSR_ATTR_MAX,
+                           tb[NL80211_ATTR_PEER_MEASUREMENTS],
+                           NULL, NULL);
+    if (err)
+        goto nla_put_failure;
+
+    struct nlattr *peer, *resp;
     int i;
-    nla_for_each_nested(peer_attrs, pmsr_attrs[NL80211_PMSR_ATTR_PEERS], i) {
-        // fetch attributes of each peer (enum nl80211_peer_measurement_peer_attrs)
-        parse_pmsr_peer(peer_attrs);
-    }
-}
+    nla_for_each_nested(peer, pmsr[NL80211_PMSR_ATTR_PEERS], i) {
+        nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
+                         tb[NL80211_PMSR_PEER_ATTR_RESP], NULL, NULL);
+        struct nlattr *peer_tb[NL80211_PMSR_PEER_ATTR_MAX + 1];
+        struct nlattr *resp[NL80211_PMSR_RESP_ATTR_MAX + 1];
+        struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
+        struct nlattr *ftm[NL80211_PMSR_FTM_RESP_ATTR_MAX + 1];
+        err = nla_parse_nested(peer_tb, NL80211_PMSR_PEER_ATTR_MAX,
+                               peer, NULL, NULL);
+        if (err)
+            goto nla_put_failure;
+        err = nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
+                               peer_tb[NL80211_PMSR_PEER_ATTR_RESP], 
+                               NULL, NULL);
+        if (err)
+            goto nla_put_failure;
 
-static void parse_pmsr_peer(struct nlattr *peer_attrs) {
+        err = nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
+                               resp[NL80211_PMSR_RESP_ATTR_DATA], 
+                               NULL, NULL);
+        if (err)
+            goto nla_put_failure;
 
-    struct nlattr *tb[NL80211_PMSR_PEER_ATTR_MAX + 1];
-    struct nlattr *resp_attrs[NL80211_PMSR_RESP_ATTR_MAX + 1];
-    struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
-    char macbuf[6 * 3];
-    int err;
+        err = nla_parse_nested(ftm, NL80211_PMSR_FTM_RESP_ATTR_MAX,
+                               data, NULL, NULL);
+        if (err)
+            goto nla_put_failure;
 
-    // TODO: save attributes
-    err = nla_parse_nested(tb, NL80211_PMSR_PEER_ATTR_MAX, peer_attrs, NULL, NULL);
-    if (err) {
-        printf("  Peer: failed to parse!\n");
-        return;
-    }
+        int64_t dist;
 
-    if (!tb[NL80211_PMSR_PEER_ATTR_ADDR]) {
-        printf("  Peer: no MAC address\n");
-        return;
-    }
-
-    mac_addr_n2a(macbuf, nla_data(tb[NL80211_PMSR_PEER_ATTR_ADDR]));
-    printf("  Peer %s:", macbuf);
-
-    if (!tb[NL80211_PMSR_PEER_ATTR_RESP]) {
-        printf(" no response!\n");
-        return;
-    }
-
-    err = nla_parse_nested(resp_attrs, NL80211_PMSR_RESP_ATTR_MAX,
-                           tb[NL80211_PMSR_PEER_ATTR_RESP], NULL, NULL);
-    if (err) {
-        printf(" failed to parse response!\n");
-        return;
-    }
-
-    if (resp_attrs[NL80211_PMSR_RESP_ATTR_STATUS])
-        printf(" status=%d (%s)",
-               nla_get_u32(resp_attrs[NL80211_PMSR_RESP_ATTR_STATUS]),
-               pmsr_status(nla_get_u32(resp_attrs[NL80211_PMSR_RESP_ATTR_STATUS])));
-    if (resp_attrs[NL80211_PMSR_RESP_ATTR_HOST_TIME])
-        printf(" @%llu",
-               (unsigned long long)nla_get_u64(resp_attrs[NL80211_PMSR_RESP_ATTR_HOST_TIME]));
-    if (resp_attrs[NL80211_PMSR_RESP_ATTR_AP_TSF])
-        printf(" tsf=%llu",
-               (unsigned long long)nla_get_u64(resp_attrs[NL80211_PMSR_RESP_ATTR_AP_TSF]));
-    if (resp_attrs[NL80211_PMSR_RESP_ATTR_FINAL])
-        printf(" (final)");
-
-    if (!resp_attrs[NL80211_PMSR_RESP_ATTR_DATA]) {
-        printf(" - no data!\n");
-        return;
-    }
-
-    printf("\n");
-
-    nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
-                     resp_attrs[NL80211_PMSR_RESP_ATTR_DATA], NULL, NULL);
-
-    if (data[NL80211_PMSR_TYPE_FTM])
-        parse_pmsr_ftm_data(data[NL80211_PMSR_TYPE_FTM]);
-}
-
-static void parse_pmsr_ftm_data(struct nlattr *data) {
-    struct nlattr *ftm[NL80211_PMSR_FTM_RESP_ATTR_MAX + 1];
-
-    printf("    FTM");
-    nla_parse_nested(ftm, NL80211_PMSR_FTM_RESP_ATTR_MAX, data, NULL, NULL);
-
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_FAIL_REASON]) {
-        printf(" failed: %s (%d)",
-               ftm_fail_reason(nla_get_u32(ftm[NL80211_PMSR_FTM_RESP_ATTR_FAIL_REASON])),
-               nla_get_u32(ftm[NL80211_PMSR_FTM_RESP_ATTR_FAIL_REASON]));
-        if (ftm[NL80211_PMSR_FTM_RESP_ATTR_BUSY_RETRY_TIME])
-            printf(" retry after %us",
-                   nla_get_u32(ftm[NL80211_PMSR_FTM_RESP_ATTR_BUSY_RETRY_TIME]));
-        printf("\n");
-        return;
-    }
-
-    printf("\n");
-
-#define PFTM(tp, attr, sign)                                     \
-    do {                                                         \
-        if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr])              \
-            printf("      " #attr ": %lld\n",                    \
-                   (sign long long)nla_get_##tp(                 \
-                       ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr])); \
-    } while (0)
-
-    PFTM(u32, BURST_INDEX, unsigned);
-    PFTM(u32, NUM_FTMR_ATTEMPTS, unsigned);
-    PFTM(u32, NUM_FTMR_SUCCESSES, unsigned);
-    PFTM(u8, NUM_BURSTS_EXP, unsigned);
-    PFTM(u8, BURST_DURATION, unsigned);
-    PFTM(u8, FTMS_PER_BURST, unsigned);
-    PFTM(u32, RSSI_AVG, signed);
-    PFTM(u32, RSSI_SPREAD, unsigned);
-    PFTM(u64, RTT_AVG, signed);
-    PFTM(u64, RTT_VARIANCE, unsigned);
-    PFTM(u64, RTT_SPREAD, unsigned);
-    PFTM(u64, DIST_AVG, signed);
-    PFTM(u64, DIST_VARIANCE, unsigned);
-    PFTM(u64, DIST_SPREAD, unsigned);
-
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_TX_RATE]) {
-        char buf[100];
-
-        parse_bitrate(ftm[NL80211_PMSR_FTM_RESP_ATTR_TX_RATE],
-                      buf, sizeof(buf));
-        printf("      TX bitrate: %s\n", buf);
-    }
-
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_RX_RATE]) {
-        char buf[100];
-
-        parse_bitrate(ftm[NL80211_PMSR_FTM_RESP_ATTR_RX_RATE],
-                      buf, sizeof(buf));
-        printf("      RX bitrate: %s\n", buf);
-    }
-
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_LCI])
-        iw_hexdump("      LCI",
-                   nla_data(ftm[NL80211_PMSR_FTM_RESP_ATTR_LCI]),
-                   nla_len(ftm[NL80211_PMSR_FTM_RESP_ATTR_LCI]));
-
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_CIVICLOC])
-        iw_hexdump("      civic location",
-                   nla_data(ftm[NL80211_PMSR_FTM_RESP_ATTR_CIVICLOC]),
-                   nla_len(ftm[NL80211_PMSR_FTM_RESP_ATTR_CIVICLOC]));
-}
-
-static int ftm_request_send(struct nl80211_state *state, struct nl_msg *msg,
-                            int argc, char **argv) {  // from iw
-    struct nlattr *pmsr, *peers;
-    const char *file;
-    int err;
-
-    file = argv[0];
-    argc--;
-    argv++;
-    while (argc) {
-        if (strncmp(argv[0], "randomise", 9) == 0 ||
-            strncmp(argv[0], "randomize", 9) == 0) {
-            err = parse_random_mac_addr(msg, argv[0] + 9);
-            if (err)
-                return err;
-        } else if (strncmp(argv[0], "timeout=", 8) == 0) {
-            char *end;
-
-            NLA_PUT_U32(msg, NL80211_ATTR_TIMEOUT,
-                        strtoul(argv[0] + 8, &end, 0));
-            if (*end)
-                return 1;
-        } else {
-            return 1;
-        }
-
-        argc--;
-        argv++;
-    }
-
-    pmsr = nla_nest_start(msg, NL80211_ATTR_PEER_MEASUREMENTS);
-    // enum nl80211_peer_measurement_attrs (nested)
-    if (!pmsr)
-        goto nla_put_failure;
-    peers = nla_nest_start(msg, NL80211_PMSR_ATTR_PEERS);
-    // the maximum number of peers measurements can be done 
-    // with in a single request (u32)
-
-    if (!peers) 
-        goto nla_put_failure;
-
-    // uint32_t max_number = nla_get_u32(peers);   // get
-    // setup pmsr and peer here
-    err = parse_ftm_config(msg, file);
-    if (err)
-        return err;
-
-    nla_nest_end(msg, peers);
-    nla_nest_end(msg, pmsr);
-
+        if (ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG])
+            dist = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG]);
+        printf("Measurement result: %d", dist);
+    };
     return 0;
-
 nla_put_failure:
-    return -ENOBUFS;
+    return 1;
+}
+
+static int listen_ftm_result(struct nl80211_state *state) {
+    struct nl_msg *msg = nlmsg_alloc();
+    if (!msg)
+        return 1;
+    genlmsg_put(msg, 0, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
+                NL80211_CMD_PEER_MEASUREMENT_RESULT, 0);
+
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
+    if (!cb)
+        return 1;
+
+    nl_socket_set_cb(state->nl_sock, cb);
+    nl_send_auto(state->nl_sock, msg);
+
+    nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
+    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, NULL);
+
+    while (1)
+        nl_recvmsgs(state->nl_sock, cb);
 }
 
 int main() {
@@ -432,10 +242,12 @@ int main() {
         return 1;
     }
 
-    // TODO: design API for measurement
-    char(*ftm_req_cmd)[] = {"<filename>",
-                            "randomise[=<addr>/<mask>]",
-                            "timeout=<seconds>"};
-    handle_cmd(&nlstate, 0, ftm_request_start,
-               NULL, 3, ftm_req_cmd);  // start ftm
+    err = start_ftm(&nlstate);
+    if (err)
+        return 1;
+
+    err = listen_ftm_result(&nlstate);
+    if (err)
+        return 1;
+    return 0;
 }

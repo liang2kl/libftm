@@ -7,8 +7,11 @@
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "ftm_types.h"
 #include "nl80211.h"
+
+#define 
 
 int valid_handler(struct nl_msg *msg, void *arg);
 void register_handler(int (*handler)(struct nl_msg *, void *));
