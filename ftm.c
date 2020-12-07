@@ -1,4 +1,16 @@
-#include "ftm.h"
+#include <errno.h>
+#include <netlink/genl/ctrl.h>
+#include <netlink/genl/family.h>
+#include <netlink/genl/genl.h>
+#include <netlink/netlink.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "nl80211.h"
+struct nl80211_state {
+    struct nl_sock *nl_sock;
+    int nl80211_id;
+};
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
                          void *arg) {
@@ -10,8 +22,8 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     int ack_len = sizeof(*nlh) + sizeof(int) + sizeof(*nlh);
 
     if (err->error > 0) {
-        /*
-		 * This is illegal, per netlink(7), but not impossible (think
+
+		 /* This is illegal, per netlink(7), but not impossible (think
 		 * "vendor commands"). Callers really expect negative error
 		 * codes, so make that happen.
 		 */
@@ -35,7 +47,7 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     attrs = (void *)((unsigned char *)nlh + ack_len);
     len -= ack_len;
 
-    nla_parse(tb, NLMSGERR_ATTR_MAX, attrs, len, NULL, NULL);
+    nla_parse(tb, NLMSGERR_ATTR_MAX, attrs, len, NULL);
     if (tb[NLMSGERR_ATTR_MSG]) {
         len = strnlen((char *)nla_data(tb[NLMSGERR_ATTR_MSG]),
                       nla_len(tb[NLMSGERR_ATTR_MSG]));
@@ -164,43 +176,43 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct nlattr *tb[NL80211_ATTR_MAX + 1];
     int err;
     err = nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-                    genlmsg_attrlen(gnlh, 0), NULL, NULL);
+                    genlmsg_attrlen(gnlh, 0), NULL);
     if (err)
         goto nla_put_failure;
     struct nlattr *pmsr[NL80211_PMSR_ATTR_MAX + 1];
     err = nla_parse_nested(pmsr, NL80211_PMSR_ATTR_MAX,
                            tb[NL80211_ATTR_PEER_MEASUREMENTS],
-                           NULL, NULL);
+                           NULL);
     if (err)
         goto nla_put_failure;
 
-    struct nlattr *peer, *resp;
+    struct nlattr *peer, **resp;
     int i;
     nla_for_each_nested(peer, pmsr[NL80211_PMSR_ATTR_PEERS], i) {
         nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
-                         tb[NL80211_PMSR_PEER_ATTR_RESP], NULL, NULL);
+                         tb[NL80211_PMSR_PEER_ATTR_RESP], NULL);
         struct nlattr *peer_tb[NL80211_PMSR_PEER_ATTR_MAX + 1];
         struct nlattr *resp[NL80211_PMSR_RESP_ATTR_MAX + 1];
         struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
         struct nlattr *ftm[NL80211_PMSR_FTM_RESP_ATTR_MAX + 1];
         err = nla_parse_nested(peer_tb, NL80211_PMSR_PEER_ATTR_MAX,
-                               peer, NULL, NULL);
+                               peer, NULL);
         if (err)
             goto nla_put_failure;
         err = nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
                                peer_tb[NL80211_PMSR_PEER_ATTR_RESP], 
-                               NULL, NULL);
+                               NULL);
         if (err)
             goto nla_put_failure;
 
         err = nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
                                resp[NL80211_PMSR_RESP_ATTR_DATA], 
-                               NULL, NULL);
+                               NULL);
         if (err)
             goto nla_put_failure;
 
         err = nla_parse_nested(ftm, NL80211_PMSR_FTM_RESP_ATTR_MAX,
-                               data, NULL, NULL);
+                               data[NL80211_PMSR_TYPE_FTM], NULL);
         if (err)
             goto nla_put_failure;
 
@@ -208,7 +220,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 
         if (ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG])
             dist = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG]);
-        printf("Measurement result: %d", dist);
+        printf("Measurement result: %ld", dist);
     };
     return 0;
 nla_put_failure:
@@ -240,15 +252,21 @@ int main() {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
     if (err) {
+    	printf("fail to allocate socket");
         return 1;
     }
 
     err = start_ftm(&nlstate);
-    if (err)
+    if (err) {
+
         return 1;
+    }
 
     err = listen_ftm_result(&nlstate);
-    if (err)
+    if (err) {
+        printf("fail to listen");
         return 1;
+    }
+
     return 0;
 }
