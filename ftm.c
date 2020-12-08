@@ -3,8 +3,10 @@
 #include <netlink/genl/family.h>
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
+#include <net/if.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "nl80211.h"
 struct nl80211_state {
@@ -17,7 +19,7 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     struct nlmsghdr *nlh = (struct nlmsghdr *)err - 1;
     int len = nlh->nlmsg_len;
     struct nlattr *attrs;
-    struct nlattr *tb[NLMSGERR_ATTR_MAX + 1];
+    struct nlattr *tb[3 + 1];
     int *ret = arg;
     int ack_len = sizeof(*nlh) + sizeof(int) + sizeof(*nlh);
 
@@ -35,10 +37,10 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
         *ret = err->error;
     }
 
-    if (!(nlh->nlmsg_flags & NLM_F_ACK_TLVS))
+    if (!(nlh->nlmsg_flags & 0x200))
         return NL_STOP;
 
-    if (!(nlh->nlmsg_flags & NLM_F_CAPPED))
+    if (!(nlh->nlmsg_flags & 0x100))
         ack_len += err->msg.nlmsg_len - sizeof(*nlh);
 
     if (len <= ack_len)
@@ -47,12 +49,12 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     attrs = (void *)((unsigned char *)nlh + ack_len);
     len -= ack_len;
 
-    nla_parse(tb, NLMSGERR_ATTR_MAX, attrs, len, NULL);
-    if (tb[NLMSGERR_ATTR_MSG]) {
-        len = strnlen((char *)nla_data(tb[NLMSGERR_ATTR_MSG]),
-                      nla_len(tb[NLMSGERR_ATTR_MSG]));
+    nla_parse(tb, 3, attrs, len, NULL);
+    if (tb[1]) {
+        len = strnlen((char *)nla_data(tb[1]),
+                      nla_len(tb[1]));
         fprintf(stderr, "kernel reports: %*s\n", len,
-                (char *)nla_data(tb[NLMSGERR_ATTR_MSG]));
+                (char *)nla_data(tb[1]));
     }
 
     return NL_STOP;
@@ -96,8 +98,8 @@ static int nl80211_init(struct nl80211_state *state) {  // from iw
 
     /* try to set NETLINK_EXT_ACK to 1, ignoring errors */
     err = 1;
-    setsockopt(nl_socket_get_fd(state->nl_sock), SOL_NETLINK,
-               NETLINK_EXT_ACK, &err, sizeof(err));
+    setsockopt(nl_socket_get_fd(state->nl_sock), 270,
+               11, &err, sizeof(err));
 
     // Resolves the Generic Netlink family name to the corresponding
     // numeric family identifier
@@ -117,14 +119,15 @@ out_handle_destroy:
 
 static int set_ftm_peer(struct nl_msg *msg, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
-    uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // placeholder
-
+    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50}; // placeholder
     nla_put(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6 * sizeof(uint8_t), mac_addr);
-
-    // TODO: set attributes
+    // set attributes
+    NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5);
+    NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
+    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 2462);
     nla_nest_end(msg, peer);
 nla_put_failure:
-    return 1;
+    return -1;
 }
 
 static int set_ftm_config(struct nl_msg *msg) {
@@ -141,6 +144,7 @@ static int set_ftm_config(struct nl_msg *msg) {
 }
 
 static int start_ftm(struct nl80211_state *state) {
+    printf("starting");
     int err;
     struct nl_msg *msg = nlmsg_alloc();
     if (!msg)
@@ -148,6 +152,10 @@ static int start_ftm(struct nl80211_state *state) {
 
     genlmsg_put(msg, 0, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
+    
+    signed long long devidx = if_nametoindex("wlp3s0");
+    
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
     err = set_ftm_config(msg);
     if (err)
         return 1;
@@ -155,21 +163,26 @@ static int start_ftm(struct nl80211_state *state) {
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
     nl_socket_set_cb(state->nl_sock, cb);
 
-    nl_send_auto(state->nl_sock, msg);
+    err = nl_send_auto(state->nl_sock, msg);
+
 
     err = 1;
     nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
     nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
     nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
-
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
-    if (err < 0) return 1;
+
+    printf("%d", err);
     return 0;
+nla_put_failure:
+    printf("fail to set up message!");
+    return 1;
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+    printf("%d\n",gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_RESULT);
     if (gnlh->cmd != NL80211_CMD_PEER_MEASUREMENT_RESULT)
         return -1;
 
@@ -249,6 +262,7 @@ static int listen_ftm_result(struct nl80211_state *state) {
 }
 
 int main() {
+    printf("hwh");
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
     if (err) {
@@ -256,9 +270,10 @@ int main() {
         return 1;
     }
 
+    printf("hhhh");
     err = start_ftm(&nlstate);
     if (err) {
-
+        printf("fail to start ftm");
         return 1;
     }
 
