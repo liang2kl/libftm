@@ -180,10 +180,12 @@ static int start_ftm(struct nl80211_state *state) {
 
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
-    
-    signed long long dev_index = if_nametoindex("wlp3s0");
-    
-    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, dev_index);
+
+    signed long long devidx = if_nametoindex("wlp3s0");
+    if (devidx == 0)
+        return 1;
+
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
     err = set_ftm_config(msg);
     if (err)
         return 1;
