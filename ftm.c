@@ -94,14 +94,14 @@ static int nl80211_init(struct nl80211_state *state) {  // from iw
     }
 
     // set socket buffer size
-    err = nl_socket_set_buffer_size(state->nl_sock, 8192, 8192);
+    err = nl_socket_set_buffer_size(state->nl_sock, 32 * 1024, 32 * 1024);
 
     if (err)
         return 1;
     /* try to set NETLINK_EXT_ACK to 1, ignoring errors */
     err = 1;
     setsockopt(nl_socket_get_fd(state->nl_sock), 270,
-               11, &err, sizeof(err));
+               1, &err, sizeof(err));
 
     // Resolves the Generic Netlink family name to the corresponding
     // numeric family identifier
@@ -121,7 +121,9 @@ out_handle_destroy:
 
 static int set_ftm_peer(struct nl_msg *msg, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50}; // placeholder
+    if (!peer)
+        goto nla_put_failure;
+    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
     NLA_PUT(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6, mac_addr);
     // set attributes
     struct nlattr *req, *req_data, *ftm;
@@ -135,24 +137,25 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     if (!ftm)
         goto nla_put_failure;
 
+    NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);
     NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5);
     NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
     nla_nest_end(msg, ftm);
     nla_nest_end(msg, req_data);
     nla_nest_end(msg, req);
 
-    struct nlattr *chan;
-    chan = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_CHAN);
+    struct nlattr *chan = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_CHAN);
     if (!chan)
         goto nla_put_failure;
 
-    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, 20);
+    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, NL80211_CHAN_WIDTH_20);    // not 20!
     NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 2412);
 
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
     return 0;
 nla_put_failure:
+    printf("put failed!\n");
     return -1;
 }
 
@@ -178,9 +181,9 @@ static int start_ftm(struct nl80211_state *state) {
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
     
-    signed long long devidx = if_nametoindex("wlp3s0");
+    signed long long dev_index = if_nametoindex("wlp3s0");
     
-    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, dev_index);
     err = set_ftm_config(msg);
     if (err)
         return 1;
@@ -188,21 +191,28 @@ static int start_ftm(struct nl80211_state *state) {
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
     struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
 
+    if (!cb || !s_cb) {
+        printf("fail to allocate callback\n");
+        return 1;
+    }
+
     nl_socket_set_cb(state->nl_sock, s_cb);
 
     err = nl_send_auto(state->nl_sock, msg);
-
-
+    if (err < 0)
+        return 1;
+    
     err = 1;
     nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
     nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
     nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
+
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
     if (err < 0) return 1;
     return 0;
 nla_put_failure:
-    printf("fail to set up message!");
+    printf("fail to set up message!\n");
     return 1;
 }
 
