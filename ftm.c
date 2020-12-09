@@ -120,13 +120,13 @@ out_handle_destroy:
     return err;
 }
 
+
 static int set_ftm_peer(struct nl_msg *msg, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
     if (!peer)
         goto nla_put_failure;
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
+    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50}; // placeholder here!
     NLA_PUT(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6, mac_addr);
-    // set attributes
     struct nlattr *req, *req_data, *ftm;
     req = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_REQ);
     if (!req)
@@ -137,6 +137,12 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     ftm = nla_nest_start(msg, NL80211_PMSR_TYPE_FTM);
     if (!ftm)
         goto nla_put_failure;
+
+    /*
+     设置 request 的参数
+     有许多参数在这里并没有设置
+     参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_req
+     */
 
     NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);
     NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5);
@@ -176,19 +182,26 @@ static int set_ftm_config(struct nl_msg *msg) {
 static int start_ftm(struct nl80211_state *state) {
     int err;
     struct nl_msg *msg = nlmsg_alloc();
-    if (!msg)
+    if (!msg) {
+        printf("Fail to allocate message!");
         return 1;
+    }
 
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
-
-    signed long long devidx = if_nametoindex("wlp7s0");
+    
+    /*
+     这里获取网卡的序号
+     在 terminal 中输入 iwconfig 查询网卡名称
+     */
+    signed long long devidx = if_nametoindex("wlp7s0"); // placeholder here!
     if (devidx == 0) {
-        printf("fail to find device\n");
+        printf("Fail to find device!\n");
         return 1;
     }
 
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
+
     err = set_ftm_config(msg);
     if (err)
         return 1;
@@ -197,7 +210,7 @@ static int start_ftm(struct nl80211_state *state) {
     struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEFAULT);
 
     if (!cb || !s_cb) {
-        printf("fail to allocate callback\n");
+        printf("Fail to allocate callback\n");
         return 1;
     }
 
@@ -222,8 +235,8 @@ static int start_ftm(struct nl80211_state *state) {
     }
     return 0;
 nla_put_failure:
-    printf("fail to set up message!\n");
     return 1;
+
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
@@ -306,23 +319,29 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
                                data[NL80211_PMSR_TYPE_FTM], NULL);
         if (err)
             return 1;
-
+            
+        /*
+         获取测距结果
+         参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_resp
+         */
         int64_t dist = 0;
         int64_t rtt = 0;
 
         if (ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG])
             dist = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG]);
-        printf("Measurement result - distance: %ld mm\n", dist);
 
         if (ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG])
             rtt = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG]);
-        printf("Measurement result - rtt: %ld picoseconds\n", rtt);
+        
+
+        printf("%-33s%ld mm\n", "Measurement result - distance: ", dist);
+        printf("%-33s%ld picoseconds\n", "Measurement result - rtt: ", rtt);
     };
     return 0;
 }
 
 static int listen_ftm_result(struct nl80211_state *state) {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEBUG when debugging
     if (!cb)
         return 1;
 
@@ -340,24 +359,28 @@ nla_put_failure:
     return 1;
 }
 
-int main() {
+int main(int argc, int** argv) {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
     if (err) {
-    	printf("fail to allocate socket\n");
+    	printf("Fail to allocate socket!\n");
         return 1;
     }
 
-    err = start_ftm(&nlstate);
-    if (err) {
-        printf("fail to start ftm\n");
-        return 1;
-    }
+    int count = 0;
+    while (count < 1000) {
+        err = start_ftm(&nlstate);
+        if (err) {
+            printf("Fail to start ftm!\n");
+            return 1;
+        }
 
-    err = listen_ftm_result(&nlstate);
-    if (err) {
-        printf("fail to listen\n");
-        return 1;
+        err = listen_ftm_result(&nlstate);
+        if (err) {
+            printf("Fail to listen!\n");
+            return 1;
+        }
+        count++;
     }
     return 0;
 }
