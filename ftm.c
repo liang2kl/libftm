@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 #include "nl80211.h"
+#define SOL 299792458
 struct nl80211_state {
     struct nl_sock *nl_sock;
     int nl80211_id;
@@ -144,9 +145,9 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
      参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_req
      */
 
-    NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);
-    NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5);
-    NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
+    NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);  // required
+    NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5); // optional
+    NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);  // required
     nla_nest_end(msg, ftm);
     nla_nest_end(msg, req_data);
     nla_nest_end(msg, req);
@@ -155,8 +156,9 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     if (!chan)
         goto nla_put_failure;
 
-    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, NL80211_CHAN_WIDTH_20);    // not 20!
-    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 2412);
+    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH,
+                NL80211_CHAN_WIDTH_20);              // optional, not 20!
+    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 2412); // required
 
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
@@ -194,7 +196,7 @@ static int start_ftm(struct nl80211_state *state) {
      这里获取网卡的序号
      在 terminal 中输入 iwconfig 查询网卡名称
      */
-    signed long long devidx = if_nametoindex("wlp7s0"); // placeholder here!
+    signed long long devidx = if_nametoindex("wlp3s0"); // placeholder here!
     if (devidx == 0) {
         printf("Fail to find device!\n");
         return 1;
@@ -207,14 +209,13 @@ static int start_ftm(struct nl80211_state *state) {
         return 1;
 
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
-    struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEFAULT);
 
-    if (!cb || !s_cb) {
+    if (!cb) {
         printf("Fail to allocate callback\n");
         return 1;
     }
 
-    nl_socket_set_cb(state->nl_sock, s_cb);
+    nl_socket_set_cb(state->nl_sock, cb);
 
     err = nl_send_auto(state->nl_sock, msg);
     if (err < 0)
@@ -333,9 +334,13 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         if (ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG])
             rtt = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG]);
         
-
-        printf("%-33s%ld mm\n", "Measurement result - distance: ", dist);
-        printf("%-33s%ld picoseconds\n", "Measurement result - rtt: ", rtt);
+        double dist_result = 0;
+        if (dist) {
+            dist_result = (double)dist / 1000;
+        } else if (rtt) {
+            dist_result = (double)rtt * SOL / 1000000000000;
+        }
+        printf("%-12s%6.3f m\n", "distance: ", dist_result);
     };
     return 0;
 }
@@ -368,7 +373,7 @@ int main(int argc, int** argv) {
     }
 
     int count = 0;
-    while (count < 1000) {
+    while (count < 100) {
         err = start_ftm(&nlstate);
         if (err) {
             printf("Fail to start ftm!\n");
