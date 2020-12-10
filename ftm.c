@@ -144,7 +144,7 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
      有许多参数在这里并没有设置
      参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_req
      */
-
+    NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_FTMS_PER_BURST, 5); // optional
     NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);  // required
     NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5); // optional
     NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);  // required
@@ -199,7 +199,7 @@ static int start_ftm(struct nl80211_state *state) {
     signed long long devidx = if_nametoindex("wlp3s0"); // placeholder here!
     if (devidx == 0) {
         printf("Fail to find device!\n");
-        return 1;
+        goto out;
     }
 
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
@@ -212,14 +212,14 @@ static int start_ftm(struct nl80211_state *state) {
 
     if (!cb) {
         printf("Fail to allocate callback\n");
-        return 1;
+        goto out;
     }
 
     nl_socket_set_cb(state->nl_sock, cb);
 
     err = nl_send_auto(state->nl_sock, msg);
     if (err < 0)
-        return 1;
+        goto out;
     
     err = 1;
     nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
@@ -237,7 +237,10 @@ static int start_ftm(struct nl80211_state *state) {
     return 0;
 nla_put_failure:
     return 1;
-
+out:
+    nl_cb_put(cb);
+	nlmsg_free(msg);
+    return 1;
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
@@ -387,5 +390,7 @@ int main(int argc, int** argv) {
         }
         count++;
     }
+
+    nl_socket_free(nlstate.nl_sock);
     return 0;
 }
