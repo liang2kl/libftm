@@ -1,16 +1,17 @@
 #include <errno.h>
+#include <net/if.h>
+#include <netlink/attr.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/family.h>
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
-#include <netlink/attr.h>
-#include <net/if.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "nl80211.h"
 #include "types.h"
+
 struct nl80211_state {
     struct nl_sock *nl_sock;
     int nl80211_id;
@@ -126,6 +127,10 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     struct nlattr *peer = nla_nest_start(msg, index);
     if (!peer)
         goto nla_put_failure;
+    if (!attr->mac_addr) {
+        fprintf(stderr, "No mac address data!\n");
+        return 1;
+    }
     NLA_PUT(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6, attr->mac_addr);
     struct nlattr *req, *req_data, *ftm;
     req = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_REQ);
@@ -138,21 +143,34 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     if (!ftm)
         goto nla_put_failure;
 
+#define FTM_PUT(prefix, attr_idx, attr_name, type) \
+    if (attr->flags[##prefix##attr_idx]) {         \
+        NLA_PUT_##type(msg,                        \
+                       ##prefix##attr_idx,         \
+                       attr->attr_name);           \
+    }
 
-#define FTM_PUT(attr_idx, attr_name, type) NLA_PUT_##type(msg, \
-                NL80211_PMSR_FTM_REQ_ATTR_##attr_idx, attr->attr_name)
+#define FTM_PUT_FLAG(prefix, attr_idx, attr_name)           \
+    if (attr->flags[prefix##attr_idx] && attr->attr_name) { \
+        NLA_PUT_FLAG(msg, prefix##attr_idx);                \
+    }
 
-    FTM_PUT(PREAMBLE, preamble, U32);
-    FTM_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
-    FTM_PUT(BURST_PERIOD, burst_period, U16);
-    FTM_PUT(BURST_DURATION, burst_duration, U8);
-    FTM_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
-    FTM_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
+#define FTM_PEER_PUT_FLAG(attr_idx, attr_name) \
+    FTM_PUT_FLAG(NL80211_PMSR_FTM_REQ_ATTR_, attr_idx, attr_name)
 
-    // if (attr->trigger_based)
-    //     NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_TRIGGER_BASED);
-    if (attr->asap)
-        NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
+#define FTM_PEER_PUT(attr_idx, attr_name, type) \
+    FTM_PUT(NL80211_PMSR_FTM_REQ_ATTR_, attr_idx, attr_name, type)
+
+    // set attributes
+    FTM_PEER_PUT(PREAMBLE, preamble, U32);
+    FTM_PEER_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
+    FTM_PEER_PUT(BURST_PERIOD, burst_period, U16);
+    FTM_PEER_PUT(BURST_DURATION, burst_duration, U8);
+    FTM_PEER_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
+    FTM_PEER_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
+
+    FTM_PEER_PUT_FLAG(ASAP, asap);
+    FTM_PEER_PUT_FLAG(TRIGGER_BASED, trigger_based);
     
     nla_nest_end(msg, ftm);
     nla_nest_end(msg, req_data);
@@ -162,14 +180,14 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     if (!chan)
         goto nla_put_failure;
 
-    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, attr->chan_width);    // not 20!
-    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, attr->center_freq);
+    FTM_PUT(NL80211_ATTR_, CHANNEL_WIDTH, chan_width, U32);
+    FTM_PUT(NL80211_ATTR_, WIPHY_FREQ, center_freq, U32);
 
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
     return 0;
 nla_put_failure:
-    printf("put failed!\n");
+    fprintf(stderr, "put failed!\n");
     return -1;
 }
 
@@ -182,7 +200,8 @@ static int set_ftm_config(struct nl_msg *msg, struct ftm_config *config) {
         return 1;
     int peer_count = config->peer_count;
     for (int i = 0; i < peer_count; i++) {
-        set_ftm_peer(msg, config->peers[i], i);
+        if (!set_ftm_peer(msg, config->peers[i], i))
+            return 1;
     }
     nla_nest_end(msg, peers);
     nla_nest_end(msg, pmsr);
@@ -194,7 +213,7 @@ static int start_ftm(struct nl80211_state *state,
     int err;
     struct nl_msg *msg = nlmsg_alloc();
     if (!msg) {
-        printf("Fail to allocate message!");
+        fprintf(stderr, "Fail to allocate message!");
         return 1;
     }
 
@@ -211,7 +230,7 @@ static int start_ftm(struct nl80211_state *state,
     struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
 
     if (!cb || !s_cb) {
-        printf("Fail to allocate callback\n");
+        fprintf(stderr, "Fail to allocate callback\n");
         return 1;
     }
 
@@ -228,10 +247,10 @@ static int start_ftm(struct nl80211_state *state,
 
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
-    if (err == -1) 
-        printf("Permission denied!\n");
+    if (err == -1)
+        fprintf(stderr, "Permission denied!\n");
     if (err < 0) {
-        printf("Received error code %d\n", err);
+        fprintf(stderr, "Received error code %d\n", err);
         return 1;
     }
     return 0;
@@ -288,23 +307,23 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 
         err = nla_parse_nested(peer_tb, NL80211_PMSR_PEER_ATTR_MAX, peer, NULL);
         if (err) {
-            printf("  Peer: failed to parse!\n");
+            printf("Peer: failed to parse!\n");
             return 1;
         }
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_ADDR]) {
-            printf("  Peer: no MAC address\n");
+            printf("Peer: no MAC address\n");
             return 1;
         }
 
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_RESP]) {
-            printf(" no response!\n");
+            printf("No response!\n");
             return 1;
         }
 
         err = nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
                                peer_tb[NL80211_PMSR_PEER_ATTR_RESP], NULL);
         if (err) {
-            printf(" failed to parse response!\n");
+            printf("Failed to parse response!\n");
             return 1;
         }
 
@@ -321,11 +340,12 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             return 1;
         
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
-#define FTM_GET(attr_idx, attr_name, type)          \
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) \
-        resp_attr->attr_name =                      \
-            nla_get_##type(ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]);
-        // TODO: filter non-exist attributes
+#define FTM_GET(attr_idx, attr_name, type)                              \
+    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) {                   \
+        resp_attr->attr_name =                                          \
+            nla_get_##type(ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]); \
+        FTM_RESP_SET_FLAG(resp_attr, attr_name);                        \
+    }
 
         FTM_GET(FAIL_REASON, fail_reason, u32);
         FTM_GET(BURST_INDEX, burst_index, u32);
@@ -376,8 +396,10 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             fprintf(stderr, "Response %d does not exist!", i);
             return;
         }
-#define FTM_PRINT(attr_name, type_id) \
-    printf("%-19s %" #type_id "\n", #attr_name, resp->attr_name);
+#define FTM_PRINT(attr_name, type_id)                                 \
+    if (resp->flags[FTM_RESP_FLAG_##attr_name]) {                     \
+        printf("%-19s %" #type_id "\n", #attr_name, resp->attr_name); \
+    }
 
         FTM_PRINT(fail_reason, u);
         FTM_PRINT(burst_index, u);
@@ -398,60 +420,72 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
     }
 }
 
-// TEST
-int main(int argc, int** argv) {
+int ftm(struct ftm_config *config,
+        struct ftm_results_wrap *results_wrap,
+        void (*handler)(struct ftm_results_wrap *),
+        int attemps) {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
     if (err) {
-    	printf("Fail to allocate socket!\n");
+        fprintf(stderr, "Fail to allocate socket!\n");
         return 1;
     }
 
-    signed long long devidx = if_nametoindex("wlp3s0");  // placeholder here!
+    signed long long devidx = if_nametoindex(config->interface_name);
     if (devidx == 0) {
-        printf("Fail to find device!\n");
+        fprintf(stderr, "Fail to find device!\n");
         return 1;
     }
-    struct ftm_peer_attr *attr = alloc_ftm_peer();
-    // required
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
-    memcpy(attr->mac_addr, mac_addr, 6);
-    attr->asap = 1;
-    attr->center_freq = 2412;
-    attr->chan_width = NL80211_CHAN_WIDTH_20;
-    attr->preamble = NL80211_PREAMBLE_HT;
-    // optional
-    attr->ftms_per_burst = 5;
-    attr->num_ftmr_retries = 5;
-
-    struct ftm_peer_attr *peers[] = {attr};
-    struct ftm_config *config = alloc_ftm_config();
-    config->device_index = devidx;
-    config->peer_count = 1;
-    config->peers = peers;
-
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < attemps; i++) {
         err = start_ftm(&nlstate, config);
         if (err) {
-            printf("Fail to start ftm!\n");
+            fprintf(stderr, "Fail to start ftm!\n");
             goto handle_free;
         }
 
-        struct ftm_resp_attr resp;
-        struct ftm_resp_attr *results[] = {&resp};
-        err = listen_ftm_result(&nlstate, results);
+        err = listen_ftm_result(&nlstate, results_wrap->results);
         if (err) {
-            printf("Fail to listen!\n");
+            fprintf(stderr, "Fail to listen!\n");
             goto handle_free;
         }
 
-        struct ftm_results_wrap results_wrap = {results, 1, NULL};
-
-        print_ftm_results(&results_wrap);
+        if (handler)
+            handler(&results_wrap);
+        else
+            print_ftm_results(&results_wrap);
     }
     return 0;
 handle_free:
-    free_ftm_config(config);
-    free_ftm_peer(attr);
     return 1;
+}
+
+int main(int argc, int** argv) {
+    struct ftm_peer_attr *attr = alloc_ftm_peer();
+    // required
+    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
+    FTM_PEER_SET_ATTR(attr, mac_addr, mac_addr);
+    FTM_PEER_SET_ATTR(attr, asap, 1);
+    FTM_PEER_SET_ATTR(attr, center_freq, 2412);
+    FTM_PEER_SET_ATTR(attr, chan_width, NL80211_CHAN_WIDTH_20);
+    FTM_PEER_SET_ATTR(attr, preamble, NL80211_PREAMBLE_HT);
+
+    // optional
+    FTM_PEER_SET_ATTR(attr, ftms_per_burst, 5);
+    FTM_PEER_SET_ATTR(attr, num_ftmr_retries, 5);
+
+    struct ftm_peer_attr *peers[] = {attr};
+
+    struct ftm_resp_attr resp;
+    struct ftm_resp_attr *results[] = {&resp};
+
+    // interfaces to communicate with the tool
+    struct ftm_config *config = alloc_ftm_config("wlp3s0", peers, 1);
+    struct ftm_results_wrap *results_wrap = alloc_ftm_results_wrap(results, 1);
+
+    ftm(config, &results_wrap, NULL, 1);
+
+    free_ftm_config(config);
+    free_ftm_results_wrap(results_wrap);
+
+    return 0;
 }
