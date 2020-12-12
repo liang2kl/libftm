@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 #include "nl80211.h"
+#include "types.h"
 struct nl80211_state {
     struct nl_sock *nl_sock;
     int nl80211_id;
@@ -121,12 +122,11 @@ out_handle_destroy:
 }
 
 
-static int set_ftm_peer(struct nl_msg *msg, int index) {
+static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
     if (!peer)
         goto nla_put_failure;
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50}; // placeholder here!
-    NLA_PUT(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6, mac_addr);
+    NLA_PUT(msg, NL80211_PMSR_PEER_ATTR_ADDR, 6, attr->mac_addr);
     struct nlattr *req, *req_data, *ftm;
     req = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_REQ);
     if (!req)
@@ -138,15 +138,22 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     if (!ftm)
         goto nla_put_failure;
 
-    /*
-     设置 request 的参数
-     有许多参数在这里并没有设置
-     参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_req
-     */
 
-    NLA_PUT_U32(msg, NL80211_PMSR_FTM_REQ_ATTR_PREAMBLE, NL80211_PREAMBLE_HT);
-    NLA_PUT_U8(msg, NL80211_PMSR_FTM_REQ_ATTR_NUM_FTMR_RETRIES, 5);
-    NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
+#define FTM_PUT(attr_idx, attr_name, type) NLA_PUT_##type(msg, \
+                NL80211_PMSR_FTM_REQ_ATTR_##attr_idx, attr->##attr_name)
+
+    FTM_PUT(PREAMBLE, preamble, U32);
+    FTM_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
+    FTM_PUT(BURST_PERIOD, burst_period, U16);
+    FTM_PUT(BURST_DURATION, burst_duration, U8);
+    FTM_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
+    FTM_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
+
+    if (attr->trigger_based)
+        NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_TRIGGER_BASED);
+    if (attr->asap)
+        NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
+    
     nla_nest_end(msg, ftm);
     nla_nest_end(msg, req_data);
     nla_nest_end(msg, req);
@@ -155,8 +162,8 @@ static int set_ftm_peer(struct nl_msg *msg, int index) {
     if (!chan)
         goto nla_put_failure;
 
-    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, NL80211_CHAN_WIDTH_20);    // not 20!
-    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 2412);
+    NLA_PUT_U32(msg, NL80211_ATTR_CHANNEL_WIDTH, attr->chan_width);    // not 20!
+    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, attr->center_freq);
 
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
@@ -166,20 +173,24 @@ nla_put_failure:
     return -1;
 }
 
-static int set_ftm_config(struct nl_msg *msg) {
+static int set_ftm_config(struct nl_msg *msg, struct ftm_config *config) {
     struct nlattr *pmsr = nla_nest_start(msg, NL80211_ATTR_PEER_MEASUREMENTS);
     if (!pmsr)
         return 1;
     struct nlattr *peers = nla_nest_start(msg, NL80211_PMSR_ATTR_PEERS);
     if (!peers)
         return 1;
-    set_ftm_peer(msg, 1);
+    int peer_count = config->peer_count;
+    for (int i = 0; i < peer_count; i++) {
+        set_ftm_peer(msg, config->peers[i], i);
+    }
     nla_nest_end(msg, peers);
     nla_nest_end(msg, pmsr);
     return 0;
 }
 
-static int start_ftm(struct nl80211_state *state) {
+static int start_ftm(struct nl80211_state *state,
+                     struct ftm_config *config) {
     int err;
     struct nl_msg *msg = nlmsg_alloc();
     if (!msg) {
@@ -190,19 +201,9 @@ static int start_ftm(struct nl80211_state *state) {
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
     
-    /*
-     这里获取网卡的序号
-     在 terminal 中输入 iwconfig 查询网卡名称
-     */
-    signed long long devidx = if_nametoindex("wlp7s0"); // placeholder here!
-    if (devidx == 0) {
-        printf("Fail to find device!\n");
-        return 1;
-    }
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, config->device_index);
 
-    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
-
-    err = set_ftm_config(msg);
+    err = set_ftm_config(msg, config);
     if (err)
         return 1;
 
@@ -236,14 +237,13 @@ static int start_ftm(struct nl80211_state *state) {
     return 0;
 nla_put_failure:
     return 1;
-
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+    struct ftm_results_wrap *results_wrap = arg;
     if (gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_COMPLETE) {
-        int * ret = arg;
-        *ret = 0;
+        *results_wrap->state = 0;
         return -1;
     }
     if (gnlh->cmd != NL80211_CMD_PEER_MEASUREMENT_RESULT)
@@ -280,7 +280,10 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct nlattr *peer, **resp;
     int i;
     nla_for_each_nested(peer, pmsr[NL80211_PMSR_ATTR_PEERS], i) {
-
+        if (i > results_wrap->count - 1) {
+            fprintf(stderr, "Count of peers is greater than the given size!");
+            return 1;
+        }
         struct nlattr *peer_tb[NL80211_PMSR_PEER_ATTR_MAX + 1];
         struct nlattr *resp[NL80211_PMSR_RESP_ATTR_MAX + 1];
         struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
@@ -319,28 +322,35 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
                                data[NL80211_PMSR_TYPE_FTM], NULL);
         if (err)
             return 1;
-            
-        /*
-         获取测距结果
-         参考 nl80211.h 中的 enum nl80211_peer_measurement_ftm_resp
-         */
-        int64_t dist = 0;
-        int64_t rtt = 0;
-
-        if (ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG])
-            dist = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_DIST_AVG]);
-
-        if (ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG])
-            rtt = nla_get_s64(ftm[NL80211_PMSR_FTM_RESP_ATTR_RTT_AVG]);
         
+        struct ftm_resp_attr *resp_attr = results_wrap->results[i];
+#define FTM_GET(attr_idx, attr_name, type)          \
+    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) \
+        resp_attr->attr_name =                      \
+            nla_get_##type(ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]);
+        // TODO: filter non-exist attributes
 
-        printf("%-33s%ld mm\n", "Measurement result - distance: ", dist);
-        printf("%-33s%ld picoseconds\n", "Measurement result - rtt: ", rtt);
+        FTM_GET(FAIL_REASON, fail_reason, u32);
+        FTM_GET(BURST_INDEX, burst_index, u32);
+        FTM_GET(NUM_FTMR_ATTEMPTS, num_ftmr_attemps, u32);
+        FTM_GET(NUM_FTMR_SUCCESSES, num_ftmr_successes, u32);
+        FTM_GET(BUSY_RETRY_TIME, busy_retry_time, u32);
+        FTM_GET(NUM_BURSTS_EXP, num_bursts_exp, u8);
+        FTM_GET(BURST_DURATION, burst_duration, u8);
+        FTM_GET(FTMS_PER_BURST, ftms_per_burst, u8);
+        FTM_GET(RSSI_AVG, rssi_avg, s32);
+        FTM_GET(RSSI_SPREAD, rssi_spread, s32);
+        FTM_GET(RTT_AVG, rtt_avg, s64);
+        FTM_GET(RTT_VARIANCE, rtt_variance, u64);
+        FTM_GET(RTT_SPREAD, rtt_spread, u32);
+        FTM_GET(DIST_AVG, dist_avg, s64);
+        FTM_GET(DIST_VARIANCE, dist_variance, u64);
+        FTM_GET(DIST_SPREAD, dist_spread, u64);
     };
     return 0;
 }
 
-static int listen_ftm_result(struct nl80211_state *state) {
+static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr **results) {
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEBUG when debugging
     if (!cb)
         return 1;
@@ -349,8 +359,9 @@ static int listen_ftm_result(struct nl80211_state *state) {
 
     int status = 1;
 
+    struct ftm_results_wrap results_wrap = {results, 1, &state};
     nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, &status);
+    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, &results_wrap);
 
     while (status)
         nl_recvmsgs(state->nl_sock, cb);
@@ -359,6 +370,36 @@ nla_put_failure:
     return 1;
 }
 
+static void print_ftm_results(struct ftm_results_wrap *results) {
+    for (int i = 0; i < results->count; i++) {
+        struct ftm_resp_attr *resp = results->results[i];
+        if (!resp) {
+            fprintf(stderr, "Response %d does not exist!", i);
+            return;
+        }
+#define FTM_PRINT(attr_name, type_id) \
+    printf("%-19s %" #type_id, #attr_name, resp->attr_name);
+
+        FTM_PRINT(fail_reason, u);
+        FTM_PRINT(burst_index, u);
+        FTM_PRINT(num_ftmr_attemps, u);
+        FTM_PRINT(num_ftmr_successes, u);
+        FTM_PRINT(busy_retry_time, u);
+        FTM_PRINT(num_bursts_exp, u);
+        FTM_PRINT(burst_duration, u);
+        FTM_PRINT(ftms_per_burst, u);
+        FTM_PRINT(rssi_avg, d);
+        FTM_PRINT(rssi_spread, d);
+        FTM_PRINT(rtt_avg, d);
+        FTM_PRINT(rtt_variance, u);
+        FTM_PRINT(rtt_spread, u);
+        FTM_PRINT(dist_avg, d);
+        FTM_PRINT(dist_variance, u);
+        FTM_PRINT(dist_spread, u);
+    }
+}
+
+// TEST
 int main(int argc, int** argv) {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
@@ -367,20 +408,49 @@ int main(int argc, int** argv) {
         return 1;
     }
 
-    int count = 0;
-    while (count < 1000) {
-        err = start_ftm(&nlstate);
+    signed long long devidx = if_nametoindex("wlp3s0");  // placeholder here!
+    if (devidx == 0) {
+        printf("Fail to find device!\n");
+        return 1;
+    }
+    struct ftm_peer_attr *attr = alloc_ftm_config();
+    // required
+    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
+    memcpy(attr->mac_addr, mac_addr, 6);
+    attr->asap = 1;
+    attr->center_freq = 2412;
+    attr->chan_width = NL80211_CHAN_WIDTH_20;
+    attr->preamble = NL80211_PREAMBLE_HT;
+    // optional
+    attr->ftms_per_burst = 5;
+    attr->num_ftmr_retries = 5;
+
+    struct ftm_peer_attr *peers[] = {attr};
+    struct ftm_config *config = alloc_ftm_config();
+    config->device_index = devidx;
+    config->peer_count = 1;
+    config->peers = peers;
+
+    for (int i = 0; i < 100; i++) {
+        err = start_ftm(&nlstate, config);
         if (err) {
             printf("Fail to start ftm!\n");
-            return 1;
+            goto handle_free;
         }
 
-        err = listen_ftm_result(&nlstate);
+        struct ftm_resp_attr resp;
+        struct ftm_resp_attr *results[] = {&resp};
+        err = listen_ftm_result(&nlstate, results);
         if (err) {
             printf("Fail to listen!\n");
-            return 1;
+            goto handle_free;
         }
-        count++;
+
+        print_ftm_results(results);
     }
     return 0;
+handle_free:
+    free_ftm_config(config);
+    free_ftm_peer(attr);
+    return 1;
 }
