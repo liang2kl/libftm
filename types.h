@@ -128,8 +128,7 @@ struct ftm_config *alloc_ftm_config(const char *interface_name,
 
 void free_ftm_config(struct ftm_config *config);
 struct ftm_peer_attr *alloc_ftm_peer();
-struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_resp_attr **results,
-                                                int count);
+struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
 void free_ftm_results_wrap(struct ftm_results_wrap *wrap);
 struct ftm_resp_attr *alloc_ftm_resp_attr();
 #endif /*_TYPES_H*/

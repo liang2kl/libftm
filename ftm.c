@@ -1,16 +1,4 @@
-#include <errno.h>
-#include <net/if.h>
-#include <netlink/attr.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/genl.h>
-#include <netlink/netlink.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-
-#include "nl80211.h"
-#include "types.h"
+#include "ftm.h"
 
 struct nl80211_state {
     struct nl_sock *nl_sock;
@@ -421,8 +409,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
 }
 
 int ftm(struct ftm_config *config,
-        struct ftm_results_wrap *results_wrap,
-        void (*handler)(struct ftm_results_wrap *),
+        void (*handler)(struct ftm_results_wrap *wrap),
         int attemps) {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
@@ -436,6 +423,10 @@ int ftm(struct ftm_config *config,
         fprintf(stderr, "Fail to find device!\n");
         return 1;
     }
+
+    struct ftm_results_wrap *results_wrap =
+        alloc_ftm_results_wrap(config->peer_count);
+
     for (int i = 0; i < attemps; i++) {
         err = start_ftm(&nlstate, config);
         if (err) {
@@ -454,38 +445,9 @@ int ftm(struct ftm_config *config,
         else
             print_ftm_results(&results_wrap);
     }
+    free_ftm_results_wrap(results_wrap);
     return 0;
 handle_free:
-    return 1;
-}
-
-int main(int argc, int** argv) {
-    struct ftm_peer_attr *attr = alloc_ftm_peer();
-    // required
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
-    FTM_PEER_SET_ATTR(attr, mac_addr, mac_addr);
-    FTM_PEER_SET_ATTR(attr, asap, 1);
-    FTM_PEER_SET_ATTR(attr, center_freq, 2412);
-    FTM_PEER_SET_ATTR(attr, chan_width, NL80211_CHAN_WIDTH_20);
-    FTM_PEER_SET_ATTR(attr, preamble, NL80211_PREAMBLE_HT);
-
-    // optional
-    FTM_PEER_SET_ATTR(attr, ftms_per_burst, 5);
-    FTM_PEER_SET_ATTR(attr, num_ftmr_retries, 5);
-
-    struct ftm_peer_attr *peers[] = {attr};
-
-    struct ftm_resp_attr resp;
-    struct ftm_resp_attr *results[] = {&resp};
-
-    // interfaces to communicate with the tool
-    struct ftm_config *config = alloc_ftm_config("wlp3s0", peers, 1);
-    struct ftm_results_wrap *results_wrap = alloc_ftm_results_wrap(results, 1);
-
-    ftm(config, &results_wrap, NULL, 1);
-
-    free_ftm_config(config);
     free_ftm_results_wrap(results_wrap);
-
-    return 0;
+    return 1;
 }

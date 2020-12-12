@@ -26,10 +26,11 @@ struct ftm_peer_attr *alloc_ftm_peer() {
     return peer;
 }
 
-struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_resp_attr **results,
-                                                int count) {
+struct ftm_results_wrap *alloc_ftm_results_wrap(int count) {
     struct ftm_results_wrap *results_wrap = malloc(sizeof(struct ftm_results_wrap));
-    results_wrap->results = results;
+    for (int i = 0; i < count; i++) {
+        results_wrap->results[i] = alloc_ftm_resp_attr();
+    }
     results_wrap->count = count;
     return results_wrap;
 };
@@ -39,6 +40,7 @@ void free_ftm_results_wrap(struct ftm_results_wrap * result_wrap) {
         if (!result_wrap->results[i])
             free(result_wrap->results[i]);
     }
+    free(result_wrap->results);
     free(result_wrap);
     result_wrap = NULL;
 }
