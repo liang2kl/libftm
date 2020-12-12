@@ -14,14 +14,14 @@ struct ftm_peer_attr {
     uint8_t mac_addr[6];
     uint32_t chan_width;
     uint32_t center_freq;
-    bool asap;
+    int asap;
     uint32_t preamble;
     uint8_t num_bursts_exp;
     uint16_t burst_period;
     uint8_t burst_duration;
     uint8_t ftms_per_burst;
     uint8_t num_ftmr_retries;
-    bool trigger_based;
+    int trigger_based;
 };
 
 struct ftm_resp_attr {

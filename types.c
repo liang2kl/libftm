@@ -21,7 +21,7 @@ struct ftm_peer_attr *alloc_ftm_peer() {
     peer->burst_duration = 15;
     peer->ftms_per_burst = 0;
     peer->num_ftmr_retries = 3;
-    peer->trigger_based = 0;
+    peer->trigger_based = 1;
     return peer;
 }
 

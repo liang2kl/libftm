@@ -140,7 +140,7 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
 
 
 #define FTM_PUT(attr_idx, attr_name, type) NLA_PUT_##type(msg, \
-                NL80211_PMSR_FTM_REQ_ATTR_##attr_idx, attr->##attr_name)
+                NL80211_PMSR_FTM_REQ_ATTR_##attr_idx, attr->attr_name)
 
     FTM_PUT(PREAMBLE, preamble, U32);
     FTM_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
@@ -149,8 +149,8 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     FTM_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
     FTM_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
 
-    if (attr->trigger_based)
-        NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_TRIGGER_BASED);
+    // if (attr->trigger_based)
+    //     NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_TRIGGER_BASED);
     if (attr->asap)
         NLA_PUT_FLAG(msg, NL80211_PMSR_FTM_REQ_ATTR_ASAP);
     
@@ -207,8 +207,8 @@ static int start_ftm(struct nl80211_state *state,
     if (err)
         return 1;
 
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
-    struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEFAULT);
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
+    struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
 
     if (!cb || !s_cb) {
         printf("Fail to allocate callback\n");
@@ -279,11 +279,8 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 
     struct nlattr *peer, **resp;
     int i;
+    int index = 0;
     nla_for_each_nested(peer, pmsr[NL80211_PMSR_ATTR_PEERS], i) {
-        if (i > results_wrap->count - 1) {
-            fprintf(stderr, "Count of peers is greater than the given size!");
-            return 1;
-        }
         struct nlattr *peer_tb[NL80211_PMSR_PEER_ATTR_MAX + 1];
         struct nlattr *resp[NL80211_PMSR_RESP_ATTR_MAX + 1];
         struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
@@ -323,7 +320,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         if (err)
             return 1;
         
-        struct ftm_resp_attr *resp_attr = results_wrap->results[i];
+        struct ftm_resp_attr *resp_attr = results_wrap->results[index];
 #define FTM_GET(attr_idx, attr_name, type)          \
     if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) \
         resp_attr->attr_name =                      \
@@ -346,12 +343,14 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         FTM_GET(DIST_AVG, dist_avg, s64);
         FTM_GET(DIST_VARIANCE, dist_variance, u64);
         FTM_GET(DIST_SPREAD, dist_spread, u64);
+
+        index++;
     };
     return 0;
 }
 
 static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr **results) {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEBUG when debugging
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG); // use NL_CB_DEBUG when debugging
     if (!cb)
         return 1;
 
@@ -359,7 +358,7 @@ static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr *
 
     int status = 1;
 
-    struct ftm_results_wrap results_wrap = {results, 1, &state};
+    struct ftm_results_wrap results_wrap = {results, 1, &status};
     nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
     nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, &results_wrap);
 
@@ -378,7 +377,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             return;
         }
 #define FTM_PRINT(attr_name, type_id) \
-    printf("%-19s %" #type_id, #attr_name, resp->attr_name);
+    printf("%-19s %" #type_id "\n", #attr_name, resp->attr_name);
 
         FTM_PRINT(fail_reason, u);
         FTM_PRINT(burst_index, u);
@@ -390,12 +389,12 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
         FTM_PRINT(ftms_per_burst, u);
         FTM_PRINT(rssi_avg, d);
         FTM_PRINT(rssi_spread, d);
-        FTM_PRINT(rtt_avg, d);
-        FTM_PRINT(rtt_variance, u);
-        FTM_PRINT(rtt_spread, u);
-        FTM_PRINT(dist_avg, d);
-        FTM_PRINT(dist_variance, u);
-        FTM_PRINT(dist_spread, u);
+        FTM_PRINT(rtt_avg, ld);
+        FTM_PRINT(rtt_variance, lu);
+        FTM_PRINT(rtt_spread, lu);
+        FTM_PRINT(dist_avg, ld);
+        FTM_PRINT(dist_variance, lu);
+        FTM_PRINT(dist_spread, lu);
     }
 }
 
@@ -413,7 +412,7 @@ int main(int argc, int** argv) {
         printf("Fail to find device!\n");
         return 1;
     }
-    struct ftm_peer_attr *attr = alloc_ftm_config();
+    struct ftm_peer_attr *attr = alloc_ftm_peer();
     // required
     uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
     memcpy(attr->mac_addr, mac_addr, 6);
@@ -431,7 +430,7 @@ int main(int argc, int** argv) {
     config->peer_count = 1;
     config->peers = peers;
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1; i++) {
         err = start_ftm(&nlstate, config);
         if (err) {
             printf("Fail to start ftm!\n");
@@ -446,7 +445,9 @@ int main(int argc, int** argv) {
             goto handle_free;
         }
 
-        print_ftm_results(results);
+        struct ftm_results_wrap results_wrap = {results, 1, NULL};
+
+        print_ftm_results(&results_wrap);
     }
     return 0;
 handle_free:
