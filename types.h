@@ -10,15 +10,10 @@ struct ftm_config {
     struct ftm_peer_attr **peers;
 };
 
-/* 
- * record what attributes are set
- * internal use only
+/**
+ * enum ftm_peer_attr_flags - Record what attributes are set
  * 
- * Append other attrs by adding members in
- * @struct ftm_peer_attr (attr_name) and flags in
- * @enum ftm_peer_attr_flags (FTM_PEER_FLAG_##attr_name).
- * 
- * Then set via FTM_PEER_SET_ATTR(attr, attr_name, value).
+ * Internal use only
  */
 enum ftm_peer_attr_flags {
     FTM_PEER_FLAG_mac_addr,
@@ -42,6 +37,21 @@ enum ftm_peer_attr_flags {
         attr->flags[FTM_PEER_FLAG_##attr_name] = 1; \
     } while (0)
 
+/**
+ * struct ftm_peer_attr - Attributes for a peer
+ * 
+ * @mac_addr: defined by @NL80211_PMSR_PEER_ATTR_ADDR
+ * @chan_width: defined by @NL80211_ATTR_CHANNEL_WIDTH
+ * @center_freq: defined by @NL80211_ATTR_WIPHY_FREQ
+ * other attrs: defined in @enum nl80211_peer_measurement_ftm_req
+ * @flags: whether an attribute is set. Identifiers are defined 
+ * in @enum ftm_peer_attr_flags.
+ * 
+ * Append additional attrs by adding members in
+ * @struct ftm_peer_attr (attr_name) and flags in
+ * @enum ftm_peer_attr_flags (FTM_PEER_FLAG_##attr_name),
+ * then set via FTM_PEER_SET_ATTR(attr, attr_name, value).
+ */
 struct ftm_peer_attr {
     uint8_t *mac_addr;
     uint32_t chan_width;
@@ -59,16 +69,10 @@ struct ftm_peer_attr {
     uint8_t flags[FTM_PEER_FLAG_MAX];
 };
 
-/* 
- * record what attributes exist
- * internal use only
+/**
+ * enum ftm_resp_attr_flags - Record what attributes exist
  * 
- * Append other attrs by adding members in
- * @struct ftm_resp_attr (attr_name) and flags in
- * @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name).
- * 
- * Then access via FTM_GET(attr_idx, attr_name, type)
- * as defined in ftm.c
+ * Internal use only
  */
 enum ftm_resp_attr_flags {
     FTM_RESP_FLAG_fail_reason,
@@ -94,6 +98,18 @@ enum ftm_resp_attr_flags {
 #define FTM_RESP_SET_FLAG(attr, attr_name) \
     attr->flags[FTM_RESP_FLAG_##attr_name] = 1
 
+/**
+ * struct ftm_resp_attr - Attributes in FTM result
+ * 
+ * all the variables are defined in 
+ * @enum nl80211_peer_measurement_ftm_resp
+ * 
+ * Append other attrs by adding members in
+ * @struct ftm_resp_attr (attr_name) and flags in
+ * @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name),
+ * then access via FTM_GET(attr_idx, attr_name, type)
+ * as defined in ftm.c
+ */
 struct ftm_resp_attr {
     uint32_t fail_reason;
     uint32_t burst_index;
@@ -122,13 +138,59 @@ struct ftm_results_wrap {
     int *state;
 };
 
+/**
+ * alloc_ftm_config - Allocate a new ftm config with given configurations
+ * 
+ * @interface_name: Interface name for wireless card
+ * @peers: Array of attributes of different peers
+ * @peer_count: Number of peers
+ */
 struct ftm_config *alloc_ftm_config(const char *interface_name,
                                     struct ftm_peer_attr **peers,
                                     int peer_count);
 
+/**
+ * free_ftm_config - Free the allocated ftm config
+ * 
+ * @config: ftm config to be freed
+ * 
+ * Call this function only when the config is no longer used
+ */
 void free_ftm_config(struct ftm_config *config);
+
+/**
+ * alloc_ftm_peer - Allocate a new peer attribute
+ * 
+ * The allocated instance will be automatically freed
+ * when calling free_ftm_results_wrap with associated
+ * ftm_results_wrap pointer. Don't free it on your own.
+ */
 struct ftm_peer_attr *alloc_ftm_peer();
-struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
-void free_ftm_results_wrap(struct ftm_results_wrap *wrap);
+
+/**
+ * alloc_ftm_resp_attr: Allocate a new ftm_resp_attr instance.
+ * 
+ * This is for internal use. You don't need to create a
+ * response attribute on your own.
+ */
 struct ftm_resp_attr *alloc_ftm_resp_attr();
+
+/**
+ * alloc_ftm_results_wrap - Allocate an ftm_results_wrap container 
+ * to store FTM results with given peer count.
+ * 
+ * @count: Number of peers
+ * 
+ * The count should be equal to the number of ftm_config defined
+ * in ftm_config.
+ */
+struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
+
+/**
+ * free_ftm_results_wrap - Free the allocated results wrap
+ * 
+ * This function will free all the associated ftm_resp_attr pointers
+ * and the pointer to the array itself.
+ */
+void free_ftm_results_wrap(struct ftm_results_wrap *wrap);
 #endif /*_TYPES_H*/
