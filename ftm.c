@@ -385,10 +385,15 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             return;
         }
         printf("\nMEASUREMENT RESULT FOR TARGET %d\n", i + 1);
-#define FTM_PRINT(attr_name, type_id)                                 \
-    if (resp->flags[FTM_RESP_FLAG_##attr_name]) {                     \
-        printf("%-19s %" #type_id "\n", #attr_name, resp->attr_name); \
-    }
+#define FTM_PRINT(attr_name, type_id)                   \
+    do {                                                \
+        printf("%-19s", #attr_name);                    \
+        if (resp->flags[FTM_RESP_FLAG_##attr_name]) {   \
+            printf("%" #type_id "\n", resp->attr_name); \
+        } else {                                        \
+            printf("non-exist\n");                      \
+        }                                               \
+    } while (0)
 
         FTM_PRINT(fail_reason, u);
         FTM_PRINT(burst_index, u);
