@@ -1,7 +1,7 @@
 #include "ftm.h"
 
 
-int main(int argc, int **argv) {
+int main(int argc, char **argv) {
     struct ftm_peer_attr *attr = alloc_ftm_peer();
     // required
     uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
@@ -17,15 +17,18 @@ int main(int argc, int **argv) {
 
     struct ftm_peer_attr *peers[] = {attr};
 
-    // interfaces to communicate with the tool
+    // the only interface to communicate with the tool
     struct ftm_config *config = alloc_ftm_config("wlp3s0", peers, 1);
 
     if (!config) {
         fprintf(stderr, "Fail to allocate config!\n");
         return 1;
     }
-    
+
+    // start FTM
     ftm(config, NULL, 1);
+
+    // clean up
     free_ftm_config(config);
 
     return 0;

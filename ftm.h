@@ -13,6 +13,14 @@
 #include "nl80211.h"
 #include "types.h"
 
+/**
+ * ftm - Start FTM with given config, receive response with given
+ * callback, for given times
+ * 
+ * @config: The config used to start FTM
+ * @handler: The callback to handle measurement results, can be NULL
+ * @attemps: How many times to measure distance
+ */
 int ftm(struct ftm_config *config,
         void (*handler)(struct ftm_results_wrap *wrap),
         int attemps);
