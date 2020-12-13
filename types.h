@@ -75,6 +75,7 @@ struct ftm_peer_attr {
  * Internal use only
  */
 enum ftm_resp_attr_flags {
+    FTM_RESP_FLAG_mac_addr,
     FTM_RESP_FLAG_fail_reason,
     FTM_RESP_FLAG_burst_index,
     FTM_RESP_FLAG_num_ftmr_attemps,
@@ -101,7 +102,8 @@ enum ftm_resp_attr_flags {
 /**
  * struct ftm_resp_attr - Attributes in FTM result
  * 
- * all the variables are defined in 
+ * @mac_addr: mac address of the target
+ * other variables are defined in 
  * @enum nl80211_peer_measurement_ftm_resp
  * 
  * Append other attrs by adding members in
@@ -111,6 +113,7 @@ enum ftm_resp_attr_flags {
  * as defined in ftm.c
  */
 struct ftm_resp_attr {
+    uint8_t mac_addr[6];
     uint32_t fail_reason;
     uint32_t burst_index;
     uint32_t num_ftmr_attemps;
@@ -181,7 +184,7 @@ struct ftm_resp_attr *alloc_ftm_resp_attr();
  * 
  * @count: Number of peers
  * 
- * The count should be equal to the number of ftm_config defined
+ * The count should be equal to the number of ftm_peer_attr defined
  * in ftm_config.
  */
 struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
