@@ -57,3 +57,4 @@ dkms.conf
 
 # Other
 .DS_Store
+gdb

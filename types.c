@@ -1,6 +1,8 @@
 #include "types.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <net/if.h>
+#include <string.h>
 
 struct ftm_config *alloc_ftm_config(const char *interface_name,
                                     struct ftm_peer_attr **peers,
@@ -8,7 +10,7 @@ struct ftm_config *alloc_ftm_config(const char *interface_name,
     struct ftm_config *config = malloc(sizeof(struct ftm_config));
     signed long long devidx = if_nametoindex(interface_name);
     if (devidx == 0) {
-        fprintf(stderr, "Fail to find device!\n");
+        fprintf(stderr, "Fail to find device interface %s!\n", interface_name);
         return NULL;
     }
     config->interface_index = devidx;
@@ -19,7 +21,7 @@ struct ftm_config *alloc_ftm_config(const char *interface_name,
 
 void free_ftm_config(struct ftm_config *config) {
     for (int i = 0; i < config->peer_count; i++) {
-        if (!config->peers[i])
+        if (config->peers[i])
             free(config->peers[i]);
     }
     free(config);
@@ -34,6 +36,7 @@ struct ftm_peer_attr *alloc_ftm_peer() {
 
 struct ftm_results_wrap *alloc_ftm_results_wrap(int count) {
     struct ftm_results_wrap *results_wrap = malloc(sizeof(struct ftm_results_wrap));
+    results_wrap->results = malloc(count * sizeof(struct ftm_resp_attr));
     for (int i = 0; i < count; i++) {
         results_wrap->results[i] = alloc_ftm_resp_attr();
     }
@@ -43,7 +46,7 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(int count) {
 
 void free_ftm_results_wrap(struct ftm_results_wrap * result_wrap) {
     for (int i = 0; i < result_wrap->count; i++) {
-        if (!result_wrap->results[i])
+        if (result_wrap->results[i])
             free(result_wrap->results[i]);
     }
     free(result_wrap->results);

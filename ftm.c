@@ -188,7 +188,7 @@ static int set_ftm_config(struct nl_msg *msg, struct ftm_config *config) {
         return 1;
     int peer_count = config->peer_count;
     for (int i = 0; i < peer_count; i++) {
-        if (!set_ftm_peer(msg, config->peers[i], i))
+        if (set_ftm_peer(msg, config->peers[i], i))
             return 1;
     }
     nla_nest_end(msg, peers);
@@ -214,8 +214,8 @@ static int start_ftm(struct nl80211_state *state,
     if (err)
         return 1;
 
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
-    struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
+    struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEFAULT);
 
     if (!cb || !s_cb) {
         fprintf(stderr, "Fail to allocate callback\n");
@@ -358,7 +358,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 }
 
 static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr **results) {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG); // use NL_CB_DEBUG when debugging
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEFAULT when debugging
     if (!cb)
         return 1;
 
@@ -384,6 +384,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             fprintf(stderr, "Response %d does not exist!", i);
             return;
         }
+        printf("\nMEASUREMENT RESULT FOR TARGET %d\n", i + 1);
 #define FTM_PRINT(attr_name, type_id)                                 \
     if (resp->flags[FTM_RESP_FLAG_##attr_name]) {                     \
         printf("%-19s %" #type_id "\n", #attr_name, resp->attr_name); \
@@ -435,9 +436,9 @@ int ftm(struct ftm_config *config,
         }
 
         if (handler)
-            handler(&results_wrap);
+            handler(results_wrap);
         else
-            print_ftm_results(&results_wrap);
+            print_ftm_results(results_wrap);
     }
     free_ftm_results_wrap(results_wrap);
     return 0;
