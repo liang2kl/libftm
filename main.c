@@ -20,8 +20,12 @@ int main(int argc, int **argv) {
     // interfaces to communicate with the tool
     struct ftm_config *config = alloc_ftm_config("wlp3s0", peers, 1);
 
+    if (!config) {
+        fprintf(stderr, "Fail to allocate config!\n");
+        return 1;
+    }
+    
     ftm(config, NULL, 1);
-
     free_ftm_config(config);
 
     return 0;

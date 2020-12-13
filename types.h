@@ -5,7 +5,7 @@
 #include "nl80211.h"
 
 struct ftm_config {
-    const char* interface_name;
+    uint64_t interface_index;
     int peer_count;
     struct ftm_peer_attr **peers;
 };

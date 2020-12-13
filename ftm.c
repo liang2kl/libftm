@@ -132,15 +132,15 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
         goto nla_put_failure;
 
 #define FTM_PUT(prefix, attr_idx, attr_name, type) \
-    if (attr->flags[##prefix##attr_idx]) {         \
+    if (attr->flags[FTM_PEER_FLAG_##attr_name]) {  \
         NLA_PUT_##type(msg,                        \
-                       ##prefix##attr_idx,         \
+                       prefix##attr_idx,           \
                        attr->attr_name);           \
     }
 
-#define FTM_PUT_FLAG(prefix, attr_idx, attr_name)           \
-    if (attr->flags[prefix##attr_idx] && attr->attr_name) { \
-        NLA_PUT_FLAG(msg, prefix##attr_idx);                \
+#define FTM_PUT_FLAG(prefix, attr_idx, attr_name)                    \
+    if (attr->flags[FTM_PEER_FLAG_##attr_name] && attr->attr_name) { \
+        NLA_PUT_FLAG(msg, prefix##attr_idx);                         \
     }
 
 #define FTM_PEER_PUT_FLAG(attr_idx, attr_name) \
@@ -208,7 +208,7 @@ static int start_ftm(struct nl80211_state *state,
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
     
-    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, config->device_index);
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, config->interface_index);
 
     err = set_ftm_config(msg, config);
     if (err)
@@ -415,12 +415,6 @@ int ftm(struct ftm_config *config,
     int err = nl80211_init(&nlstate);
     if (err) {
         fprintf(stderr, "Fail to allocate socket!\n");
-        return 1;
-    }
-
-    signed long long devidx = if_nametoindex(config->interface_name);
-    if (devidx == 0) {
-        fprintf(stderr, "Fail to find device!\n");
         return 1;
     }
 

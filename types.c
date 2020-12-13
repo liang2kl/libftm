@@ -1,11 +1,17 @@
 #include "types.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 struct ftm_config *alloc_ftm_config(const char *interface_name,
                                     struct ftm_peer_attr **peers,
                                     int peer_count) {
     struct ftm_config *config = malloc(sizeof(struct ftm_config));
-    config->interface_name = interface_name;
+    signed long long devidx = if_nametoindex(interface_name);
+    if (devidx == 0) {
+        fprintf(stderr, "Fail to find device!\n");
+        return NULL;
+    }
+    config->interface_index = devidx;
     config->peers = peers;
     config->peer_count = peer_count;
     return config;
