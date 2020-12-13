@@ -303,6 +303,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             return 1;
         }
 
+
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_RESP]) {
             printf("No response!\n");
             return 1;
@@ -328,6 +329,13 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             return 1;
         
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
+
+#define FTM_GET_ADDR(nl_attr)                        \
+    do {                                             \
+        nla_memcpy(resp_attr->mac_addr, nl_attr, 6); \
+        FTM_RESP_SET_FLAG(resp_attr, mac_addr);      \
+    } while (0)
+
 #define FTM_GET(attr_idx, attr_name, type)                              \
     if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) {                   \
         resp_attr->attr_name =                                          \
@@ -335,6 +343,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         FTM_RESP_SET_FLAG(resp_attr, attr_name);                        \
     }
 
+        FTM_GET_ADDR(peer_tb[NL80211_PMSR_PEER_ATTR_ADDR]);
         FTM_GET(FAIL_REASON, fail_reason, u32);
         FTM_GET(BURST_INDEX, burst_index, u32);
         FTM_GET(NUM_FTMR_ATTEMPTS, num_ftmr_attemps, u32);
@@ -385,6 +394,12 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             return;
         }
         printf("\nMEASUREMENT RESULT FOR TARGET %d\n", i + 1);
+#define FTM_PRINT_ADDR()                                              \
+    if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                        \
+        uint8_t *addr = resp->mac_addr;                               \
+        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", "mac_addr",      \
+               addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]); \
+    }
 #define FTM_PRINT(attr_name, type_id)                   \
     do {                                                \
         printf("%-19s", #attr_name);                    \
@@ -394,7 +409,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             printf("non-exist\n");                      \
         }                                               \
     } while (0)
-
+        FTM_PRINT_ADDR();
         FTM_PRINT(fail_reason, u);
         FTM_PRINT(burst_index, u);
         FTM_PRINT(num_ftmr_attemps, u);
