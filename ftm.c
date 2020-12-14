@@ -354,8 +354,8 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     return 0;
 }
 
-static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr **results) {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEFAULT when debugging
+static int listen_ftm_result(struct nl80211_state *state, struct ftm_results_wrap *results_wrap) {
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEBUG when debugging
     if (!cb)
         return 1;
 
@@ -363,9 +363,9 @@ static int listen_ftm_result(struct nl80211_state *state, struct ftm_resp_attr *
 
     int status = 1;
 
-    struct ftm_results_wrap results_wrap = {results, 1, &status};
+    results_wrap->state = &status;
     nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, &results_wrap);
+    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handle_ftm_result, results_wrap);
 
     while (status)
         nl_recvmsgs(state->nl_sock, cb);
@@ -381,11 +381,11 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             fprintf(stderr, "Response %d does not exist!", i);
             return;
         }
-        printf("\nMEASUREMENT RESULT FOR TARGET %d\n", i + 1);
+        printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
 #define FTM_PRINT_ADDR()                                              \
     if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                        \
         uint8_t *addr = resp->mac_addr;                               \
-        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n", "mac_addr",      \
+        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n", "mac_addr",    \
                addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]); \
     }
 #define FTM_PRINT(attr_name, type_id)                   \
@@ -437,7 +437,7 @@ int ftm(struct ftm_config *config,
             goto handle_free;
         }
 
-        err = listen_ftm_result(&nlstate, results_wrap->results);
+        err = listen_ftm_result(&nlstate, results_wrap);
         if (err) {
             fprintf(stderr, "Fail to listen!\n");
             goto handle_free;
@@ -449,10 +449,10 @@ int ftm(struct ftm_config *config,
             print_ftm_results(results_wrap);
         
         free_ftm_results_wrap(results_wrap);
-
-    handle_free:
-        free_ftm_results_wrap(results_wrap);
-        return 1;
+        continue;
+handle_free:
+    free_ftm_results_wrap(results_wrap);
+    return 1;
     }
     return 0;
 }
