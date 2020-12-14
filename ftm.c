@@ -120,35 +120,28 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     if (!ftm)
         goto nla_put_failure;
 
-#define FTM_PUT(prefix, attr_idx, attr_name, type) \
-    if (attr->flags[FTM_PEER_FLAG_##attr_name]) {  \
-        NLA_PUT_##type(msg,                        \
-                       prefix##attr_idx,           \
-                       attr->attr_name);           \
-    }
+/* 
+ * Below #define are only for internal use. 
+ * Use the generic FTM_PUT, etc. defined in
+ * ftm.h, or create your own #define instead.
+ */
+#define _FTM_PUT(prefix, attr_idx, attr_name, type) \
+    FTM_PUT(msg, attr, prefix, attr_idx, attr_name, type)
+#define _FTM_PEER_PUT(attr_idx, attr_name, type) \
+    FTM_PEER_PUT(msg, attr, attr_idx, attr_name, type)
+#define _FTM_PEER_PUT_FLAG(attr_idx, attr_name) \
+    FTM_PEER_PUT_FLAG(msg, attr, attr_idx, attr_name)
 
-#define FTM_PUT_FLAG(prefix, attr_idx, attr_name)                    \
-    if (attr->flags[FTM_PEER_FLAG_##attr_name] && attr->attr_name) { \
-        NLA_PUT_FLAG(msg, prefix##attr_idx);                         \
-    }
+    _FTM_PEER_PUT(PREAMBLE, preamble, U32);
+    _FTM_PEER_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
+    _FTM_PEER_PUT(BURST_PERIOD, burst_period, U16);
+    _FTM_PEER_PUT(BURST_DURATION, burst_duration, U8);
+    _FTM_PEER_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
+    _FTM_PEER_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
 
-#define FTM_PEER_PUT_FLAG(attr_idx, attr_name) \
-    FTM_PUT_FLAG(NL80211_PMSR_FTM_REQ_ATTR_, attr_idx, attr_name)
+    _FTM_PEER_PUT_FLAG(ASAP, asap);
+    _FTM_PEER_PUT_FLAG(TRIGGER_BASED, trigger_based);
 
-#define FTM_PEER_PUT(attr_idx, attr_name, type) \
-    FTM_PUT(NL80211_PMSR_FTM_REQ_ATTR_, attr_idx, attr_name, type)
-
-    // set attributes
-    FTM_PEER_PUT(PREAMBLE, preamble, U32);
-    FTM_PEER_PUT(NUM_BURSTS_EXP, num_bursts_exp, U8);
-    FTM_PEER_PUT(BURST_PERIOD, burst_period, U16);
-    FTM_PEER_PUT(BURST_DURATION, burst_duration, U8);
-    FTM_PEER_PUT(FTMS_PER_BURST, ftms_per_burst, U8);
-    FTM_PEER_PUT(NUM_FTMR_RETRIES, num_ftmr_retries, U8);
-
-    FTM_PEER_PUT_FLAG(ASAP, asap);
-    FTM_PEER_PUT_FLAG(TRIGGER_BASED, trigger_based);
-    
     nla_nest_end(msg, ftm);
     nla_nest_end(msg, req_data);
     nla_nest_end(msg, req);
@@ -157,8 +150,8 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     if (!chan)
         goto nla_put_failure;
 
-    FTM_PUT(NL80211_ATTR_, CHANNEL_WIDTH, chan_width, U32);
-    FTM_PUT(NL80211_ATTR_, WIPHY_FREQ, center_freq, U32);
+    _FTM_PUT(NL80211_ATTR_, CHANNEL_WIDTH, chan_width, U32);
+    _FTM_PUT(NL80211_ATTR_, WIPHY_FREQ, center_freq, U32);
 
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
@@ -317,37 +310,32 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             return 1;
         
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
+/* 
+ * Below #define is only for internal use. 
+ * Use the generic FTM_GET defined in
+ * ftm.h, or create your own #define instead.
+ */
 
-#define FTM_GET_ADDR(nl_attr)                        \
-    do {                                             \
-        nla_memcpy(resp_attr->mac_addr, nl_attr, 6); \
-        FTM_RESP_SET_FLAG(resp_attr, mac_addr);      \
-    } while (0)
+#define _FTM_GET(attr_idx, attr_name, type) \
+    FTM_GET(ftm, resp_attr, attr_idx, attr_name, type)
 
-#define FTM_GET(attr_idx, attr_name, type)                              \
-    if (ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]) {                   \
-        resp_attr->attr_name =                                          \
-            nla_get_##type(ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]); \
-        FTM_RESP_SET_FLAG(resp_attr, attr_name);                        \
-    }
-
-        FTM_GET_ADDR(peer_tb[NL80211_PMSR_PEER_ATTR_ADDR]);
-        FTM_GET(FAIL_REASON, fail_reason, u32);
-        FTM_GET(BURST_INDEX, burst_index, u32);
-        FTM_GET(NUM_FTMR_ATTEMPTS, num_ftmr_attemps, u32);
-        FTM_GET(NUM_FTMR_SUCCESSES, num_ftmr_successes, u32);
-        FTM_GET(BUSY_RETRY_TIME, busy_retry_time, u32);
-        FTM_GET(NUM_BURSTS_EXP, num_bursts_exp, u8);
-        FTM_GET(BURST_DURATION, burst_duration, u8);
-        FTM_GET(FTMS_PER_BURST, ftms_per_burst, u8);
-        FTM_GET(RSSI_AVG, rssi_avg, s32);
-        FTM_GET(RSSI_SPREAD, rssi_spread, s32);
-        FTM_GET(RTT_AVG, rtt_avg, s64);
-        FTM_GET(RTT_VARIANCE, rtt_variance, u64);
-        FTM_GET(RTT_SPREAD, rtt_spread, u32);
-        FTM_GET(DIST_AVG, dist_avg, s64);
-        FTM_GET(DIST_VARIANCE, dist_variance, u64);
-        FTM_GET(DIST_SPREAD, dist_spread, u64);
+        FTM_GET_ADDR(peer_tb[NL80211_PMSR_PEER_ATTR_ADDR], resp_attr);
+        _FTM_GET(FAIL_REASON, fail_reason, u32);
+        _FTM_GET(BURST_INDEX, burst_index, u32);
+        _FTM_GET(NUM_FTMR_ATTEMPTS, num_ftmr_attemps, u32);
+        _FTM_GET(NUM_FTMR_SUCCESSES, num_ftmr_successes, u32);
+        _FTM_GET(BUSY_RETRY_TIME, busy_retry_time, u32);
+        _FTM_GET(NUM_BURSTS_EXP, num_bursts_exp, u8);
+        _FTM_GET(BURST_DURATION, burst_duration, u8);
+        _FTM_GET(FTMS_PER_BURST, ftms_per_burst, u8);
+        _FTM_GET(RSSI_AVG, rssi_avg, s32);
+        _FTM_GET(RSSI_SPREAD, rssi_spread, s32);
+        _FTM_GET(RTT_AVG, rtt_avg, s64);
+        _FTM_GET(RTT_VARIANCE, rtt_variance, u64);
+        _FTM_GET(RTT_SPREAD, rtt_spread, u32);
+        _FTM_GET(DIST_AVG, dist_avg, s64);
+        _FTM_GET(DIST_VARIANCE, dist_variance, u64);
+        _FTM_GET(DIST_SPREAD, dist_spread, u64);
 
         index++;
     };
@@ -382,38 +370,32 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
             return;
         }
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
-#define FTM_PRINT_ADDR()                                              \
-    if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                        \
-        uint8_t *addr = resp->mac_addr;                               \
-        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n", "mac_addr",    \
-               addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]); \
-    }
-#define FTM_PRINT(attr_name, type_id)                   \
-    do {                                                \
-        printf("%-19s", #attr_name);                    \
-        if (resp->flags[FTM_RESP_FLAG_##attr_name]) {   \
-            printf("%" #type_id "\n", resp->attr_name); \
-        } else {                                        \
-            printf("non-exist\n");                      \
-        }                                               \
-    } while (0)
-        FTM_PRINT_ADDR();
-        FTM_PRINT(fail_reason, u);
-        FTM_PRINT(burst_index, u);
-        FTM_PRINT(num_ftmr_attemps, u);
-        FTM_PRINT(num_ftmr_successes, u);
-        FTM_PRINT(busy_retry_time, u);
-        FTM_PRINT(num_bursts_exp, u);
-        FTM_PRINT(burst_duration, u);
-        FTM_PRINT(ftms_per_burst, u);
-        FTM_PRINT(rssi_avg, d);
-        FTM_PRINT(rssi_spread, d);
-        FTM_PRINT(rtt_avg, ld);
-        FTM_PRINT(rtt_variance, lu);
-        FTM_PRINT(rtt_spread, lu);
-        FTM_PRINT(dist_avg, ld);
-        FTM_PRINT(dist_variance, lu);
-        FTM_PRINT(dist_spread, lu);
+
+/* 
+ * Below #define is only for internal use. 
+ * Use the generic FTM_PRINT defined in
+ * ftm.h, or create your own #define instead.
+ */
+#define _FTM_PRINT(attr_name, specifier) \
+    FTM_PRINT(resp, attr_name, specifier)
+
+        FTM_PRINT_ADDR(resp);
+        _FTM_PRINT(fail_reason, u);
+        _FTM_PRINT(burst_index, u);
+        _FTM_PRINT(num_ftmr_attemps, u);
+        _FTM_PRINT(num_ftmr_successes, u);
+        _FTM_PRINT(busy_retry_time, u);
+        _FTM_PRINT(num_bursts_exp, u);
+        _FTM_PRINT(burst_duration, u);
+        _FTM_PRINT(ftms_per_burst, u);
+        _FTM_PRINT(rssi_avg, d);
+        _FTM_PRINT(rssi_spread, d);
+        _FTM_PRINT(rtt_avg, ld);
+        _FTM_PRINT(rtt_variance, lu);
+        _FTM_PRINT(rtt_spread, lu);
+        _FTM_PRINT(dist_avg, ld);
+        _FTM_PRINT(dist_variance, lu);
+        _FTM_PRINT(dist_spread, lu);
     }
 }
 
@@ -450,9 +432,9 @@ int ftm(struct ftm_config *config,
         
         free_ftm_results_wrap(results_wrap);
         continue;
-handle_free:
-    free_ftm_results_wrap(results_wrap);
-    return 1;
+    handle_free:
+        free_ftm_results_wrap(results_wrap);
+        return 1;
     }
     return 0;
 }
