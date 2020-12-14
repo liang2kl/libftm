@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
     struct ftm_peer_attr *attr = alloc_ftm_peer();
     // required
     uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
-    FTM_PEER_SET_ATTR(attr, mac_addr, mac_addr);
+    FTM_PEER_SET_ATTR_ADDR(attr, mac_addr);
     FTM_PEER_SET_ATTR(attr, asap, 1);
     FTM_PEER_SET_ATTR(attr, center_freq, 2412);
     FTM_PEER_SET_ATTR(attr, chan_width, NL80211_CHAN_WIDTH_20);

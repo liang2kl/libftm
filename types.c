@@ -21,8 +21,12 @@ struct ftm_config *alloc_ftm_config(const char *interface_name,
 
 void free_ftm_config(struct ftm_config *config) {
     for (int i = 0; i < config->peer_count; i++) {
-        if (config->peers[i])
+        if (config->peers[i]) {
+            if (config->peers[i]->mac_addr &&
+                config->peers[i]->flags[FTM_PEER_FLAG_mac_addr])
+                free(config->peers[i]->mac_addr);
             free(config->peers[i]);
+        }
     }
     free(config);
     config = NULL;

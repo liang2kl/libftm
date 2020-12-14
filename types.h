@@ -33,11 +33,35 @@ enum ftm_peer_attr_flags {
 
     FTM_PEER_FLAG_MAX
 };
-
+/**
+ * FTM_PEER_SET_ATTR - Set attribute for given ftm_peer_attr instance
+ * 
+ * @attr: ftm_peer_attr pointer
+ * @attr_name: variable name of designated attribute
+ * @value: the value to set
+ * 
+ * Do not set mac_addr via this method. Use FTM_PEER_SET_ATTR_ADDR instead.
+ */
 #define FTM_PEER_SET_ATTR(attr, attr_name, value)   \
     do {                                            \
         attr->attr_name = value;                    \
         attr->flags[FTM_PEER_FLAG_##attr_name] = 1; \
+    } while (0)
+
+/**
+ * FTM_PEER_SET_ATTR_ADDR - Set mac address for given ftm_peer_attr instance
+ * 
+ * @attr: ftm_peer_attr pointer
+ * @mac_addr: an array containing six u8 numbers.
+ * 
+ * This is the only legal way to set a peer's mac address.
+ */
+#define FTM_PEER_SET_ATTR_ADDR(attr, mac_addr)   \
+    do {                                         \
+        uint8_t *new_addr = malloc(6);           \
+        memcpy(new_addr, mac_addr, 6);           \
+        attr->mac_addr = new_addr;               \
+        attr->flags[FTM_PEER_FLAG_mac_addr] = 1; \
     } while (0)
 
 /**
@@ -104,8 +128,8 @@ enum ftm_resp_attr_flags {
 /**
  * struct ftm_resp_attr - Attributes in FTM result
  * 
- * @mac_addr: mac address of the target other variables are defined in 
- * @enum nl80211_peer_measurement_ftm_resp
+ * @mac_addr: mac address of the target 
+ * other variables are defined in @enum nl80211_peer_measurement_ftm_resp
  * 
  * Append other attrs by adding members in @struct ftm_resp_attr (attr_name)
  * and flags in @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name),
