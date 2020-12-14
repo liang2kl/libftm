@@ -15,11 +15,6 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     int ack_len = sizeof(*nlh) + sizeof(int) + sizeof(*nlh);
 
     if (err->error > 0) {
-
-		 /* This is illegal, per netlink(7), but not impossible (think
-		 * "vendor commands"). Callers really expect negative error
-		 * codes, so make that happen.
-		 */
         fprintf(stderr,
                 "ERROR: received positive netlink error code %d\n",
                 err->error);
@@ -70,32 +65,26 @@ static int no_seq_check(struct nl_msg *msg, void *arg) {
 static int nl80211_init(struct nl80211_state *state) {  // from iw
     int err;
 
-    // allocate socket
     state->nl_sock = nl_socket_alloc();
     if (!state->nl_sock) {
         fprintf(stderr, "Failed to allocate netlink socket.\n");
         return -ENOMEM;
     }
 
-    // connect a Generic Netlink socket
     if (genl_connect(state->nl_sock)) {
         fprintf(stderr, "Failed to connect to generic netlink.\n");
         err = -ENOLINK;
         goto out_handle_destroy;
     }
 
-    // set socket buffer size
     err = nl_socket_set_buffer_size(state->nl_sock, 32 * 1024, 32 * 1024);
 
     if (err)
         return 1;
-    /* try to set NETLINK_EXT_ACK to 1, ignoring errors */
     err = 1;
     setsockopt(nl_socket_get_fd(state->nl_sock), 270,
                1, &err, sizeof(err));
 
-    // Resolves the Generic Netlink family name to the corresponding
-    // numeric family identifier
     state->nl80211_id = genl_ctrl_resolve(state->nl_sock, "nl80211");
     if (state->nl80211_id < 0) {
         fprintf(stderr, "nl80211 not found.\n");
@@ -316,7 +305,6 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             return 1;
         }
 
-
         err = nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
                                resp[NL80211_PMSR_RESP_ATTR_DATA], 
                                NULL);
@@ -397,7 +385,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
 #define FTM_PRINT_ADDR()                                              \
     if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                        \
         uint8_t *addr = resp->mac_addr;                               \
-        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", "mac_addr",      \
+        printf("%-19s%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n", "mac_addr",      \
                addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]); \
     }
 #define FTM_PRINT(attr_name, type_id)                   \
@@ -439,10 +427,10 @@ int ftm(struct ftm_config *config,
         return 1;
     }
 
-    struct ftm_results_wrap *results_wrap =
-        alloc_ftm_results_wrap(config->peer_count);
-
     for (int i = 0; i < attemps; i++) {
+        struct ftm_results_wrap *results_wrap =
+            alloc_ftm_results_wrap(config->peer_count);
+
         err = start_ftm(&nlstate, config);
         if (err) {
             fprintf(stderr, "Fail to start ftm!\n");
@@ -459,10 +447,12 @@ int ftm(struct ftm_config *config,
             handler(results_wrap);
         else
             print_ftm_results(results_wrap);
+        
+        free_ftm_results_wrap(results_wrap);
+
+    handle_free:
+        free_ftm_results_wrap(results_wrap);
+        return 1;
     }
-    free_ftm_results_wrap(results_wrap);
     return 0;
-handle_free:
-    free_ftm_results_wrap(results_wrap);
-    return 1;
 }

@@ -2,6 +2,7 @@
 #define _TYPES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "nl80211.h"
 
 struct ftm_config {
@@ -56,14 +57,14 @@ struct ftm_peer_attr {
     uint8_t *mac_addr;
     uint32_t chan_width;
     uint32_t center_freq;
-    int asap;
+    bool asap;
     uint32_t preamble;
     uint8_t num_bursts_exp;
     uint16_t burst_period;
     uint8_t burst_duration;
     uint8_t ftms_per_burst;
     uint8_t num_ftmr_retries;
-    int trigger_based;
+    bool trigger_based;
 
     /* internal use */
     uint8_t flags[FTM_PEER_FLAG_MAX];

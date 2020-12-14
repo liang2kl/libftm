@@ -26,7 +26,9 @@ int main(int argc, char **argv) {
     }
 
     // start FTM
-    ftm(config, NULL, 1);
+    int err = ftm(config, NULL, 1);
+    if (err)
+        printf("FTM measurement failed!\n");
 
     // clean up
     free_ftm_config(config);

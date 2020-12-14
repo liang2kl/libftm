@@ -36,7 +36,7 @@ struct ftm_peer_attr *alloc_ftm_peer() {
 
 struct ftm_results_wrap *alloc_ftm_results_wrap(int count) {
     struct ftm_results_wrap *results_wrap = malloc(sizeof(struct ftm_results_wrap));
-    results_wrap->results = malloc(count * sizeof(struct ftm_resp_attr));
+    results_wrap->results = malloc(count * sizeof(struct ftm_resp_attr*));
     for (int i = 0; i < count; i++) {
         results_wrap->results[i] = alloc_ftm_resp_attr();
     }
