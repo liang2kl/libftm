@@ -14,7 +14,9 @@ struct ftm_config {
 /**
  * enum ftm_peer_attr_flags - Record what attributes are set
  * 
- * Internal use only
+ * Internal use only. Modification is needed if you add additional attribute
+ * into @struct ftm_peer_attr. Please keep the suffix the same as the variable
+ * name in struct ftm_peer_attr.
  */
 enum ftm_peer_attr_flags {
     FTM_PEER_FLAG_mac_addr,
@@ -73,7 +75,9 @@ struct ftm_peer_attr {
 /**
  * enum ftm_resp_attr_flags - Record what attributes exist
  * 
- * Internal use only
+ * Internal use only. Modification is needed if you add additional attribute
+ * into @struct ftm_resp_attr. Please keep the suffix the same as the variable
+ * name in struct ftm_resp_attr.
  */
 enum ftm_resp_attr_flags {
     FTM_RESP_FLAG_mac_addr,
@@ -97,21 +101,15 @@ enum ftm_resp_attr_flags {
     FTM_RESP_FLAG_MAX
 };
 
-#define FTM_RESP_SET_FLAG(attr, attr_name) \
-    attr->flags[FTM_RESP_FLAG_##attr_name] = 1
-
 /**
  * struct ftm_resp_attr - Attributes in FTM result
  * 
- * @mac_addr: mac address of the target
- * other variables are defined in 
+ * @mac_addr: mac address of the target other variables are defined in 
  * @enum nl80211_peer_measurement_ftm_resp
  * 
- * Append other attrs by adding members in
- * @struct ftm_resp_attr (attr_name) and flags in
- * @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name),
- * then access via FTM_GET(attr_idx, attr_name, type)
- * as defined in ftm.c
+ * Append other attrs by adding members in @struct ftm_resp_attr (attr_name)
+ * and flags in @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name),
+ * then access via FTM_GET(attr_idx, attr_name, type) as defined in ftm.c
  */
 struct ftm_resp_attr {
     uint8_t mac_addr[6];
@@ -165,9 +163,9 @@ void free_ftm_config(struct ftm_config *config);
 /**
  * alloc_ftm_peer - Allocate a new peer attribute
  * 
- * The allocated instance will be automatically freed
- * when calling free_ftm_results_wrap with associated
- * ftm_results_wrap pointer. Don't free it on your own.
+ * The allocated instance will be automatically freed when calling 
+ * free_ftm_results_wrap with associated ftm_results_wrap pointer. 
+ * Don't free it on your own.
  */
 struct ftm_peer_attr *alloc_ftm_peer();
 
