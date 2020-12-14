@@ -34,7 +34,7 @@ int ftm(struct ftm_config *config,
 /**
  * DOC: Lower-level APIs
  * 
- * Theoretically, the only API needed to start a FTM is the function ftm(). 
+ * Theoretically, the only API needed to start an FTM is the function ftm(). 
  * However, if you need to deal with netlink messages yourself, or have some 
  * specific requirements, you can use some convenient, lower-level APIs 
  * provided in the following section.
@@ -88,11 +88,19 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PEER_PUT_FLAG - Set flag attributes for a peer
  * 
- * This is a helper definition specified for setting attribute defined in
+ * This is a helper definition specified for setting attributes defined in
  * @enum l80211_peer_measurement_ftm_req.
  */
 #define FTM_PEER_PUT_FLAG(msg, attr, attr_idx, attr_name) \
     FTM_PUT_FLAG(msg, attr, NL80211_PMSR_FTM_REQ_ATTR_, attr_idx, attr_name)
+
+/**
+ * FTM_RESP_SET_FLAG - Set flags for specific attribute
+ * 
+ * Internal use only.
+ */
+#define FTM_RESP_SET_FLAG(attr, attr_name) \
+    attr->flags[FTM_RESP_FLAG_##attr_name] = 1
 
 /**
  * FTM_GET - Get attributes from given nlattr pointer and store in 
@@ -103,7 +111,6 @@ int ftm(struct ftm_config *config,
  * @attr_idx: suffix of identifiers
  * @attr_name: variable name of ftm_resp_attr
  * @type: data type of the attribute, lowercased, like u8.
- * like U8
  * 
  * Don't use this definition to get mac_addr. Use FTM_GET_ADDR instead.
  */
@@ -113,14 +120,6 @@ int ftm(struct ftm_config *config,
             nla_get_##type(ftm[NL80211_PMSR_FTM_RESP_ATTR_##attr_idx]); \
         FTM_RESP_SET_FLAG(resp_attr, attr_name);                        \
     }
-
-/**
- * FTM_RESP_SET_FLAG - Set flags for specific attribute
- * 
- * Internal use only.
- */
-#define FTM_RESP_SET_FLAG(attr, attr_name) \
-    attr->flags[FTM_RESP_FLAG_##attr_name] = 1
 
 /**
  * FTM_GET_ADDR - Copy mac address of the peer into given ftm_resp_attr 
@@ -166,6 +165,4 @@ int ftm(struct ftm_config *config,
                addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]); \
     }
 
-
-        
 #endif /* _FTM_H */
