@@ -14,6 +14,7 @@ struct ftm_config {
 /**
  * enum ftm_peer_attr_flags - Record what attributes are set
  * 
+ * @note
  * Internal use only. Modification is needed if you add additional attribute
  * into @struct ftm_peer_attr. Please keep the suffix the same as the variable
  * name in struct ftm_peer_attr.
@@ -45,6 +46,7 @@ enum ftm_peer_attr_flags {
  * @flags: whether an attribute is set. Identifiers are defined 
  * in @enum ftm_peer_attr_flags.
  * 
+ * @note
  * Append additional attrs by adding members in
  * @struct ftm_peer_attr (attr_name) and flags in
  * @enum ftm_peer_attr_flags (FTM_PEER_FLAG_##attr_name),
@@ -70,6 +72,7 @@ struct ftm_peer_attr {
 /**
  * enum ftm_resp_attr_flags - Record what attributes exist
  * 
+ * @note
  * Internal use only. Modification is needed if you add additional attribute
  * into @struct ftm_resp_attr. Please keep the suffix the same as the variable
  * name in struct ftm_resp_attr.
@@ -103,6 +106,7 @@ enum ftm_resp_attr_flags {
  * @mac_addr: mac address of the target 
  * other variables are defined in @enum nl80211_peer_measurement_ftm_resp
  * 
+ * @note
  * Append other attrs by adding members in @struct ftm_resp_attr (attr_name)
  * and flags in @enum ftm_resp_attr_flags (FTM_RESP_FLAG_##attr_name),
  * then access via FTM_GET as defined in ftm.h
@@ -139,10 +143,11 @@ struct ftm_results_wrap {
 /**
  * FTM_PEER_SET_ATTR - Set attribute for given ftm_peer_attr instance
  * 
- * @arg attr        ftm_peer_attr pointer
- * @arg attr_name   variable name of designated attribute
- * @arg value       the value to set
+ * @param attr        ftm_peer_attr pointer
+ * @param attr_name   variable name of designated attribute
+ * @param value       the value to set
  * 
+ * @note
  * Do not set mac_addr via this macro. Use FTM_PEER_SET_ATTR_ADDR instead.
  */
 #define FTM_PEER_SET_ATTR(attr, attr_name, value)   \
@@ -154,9 +159,10 @@ struct ftm_results_wrap {
 /**
  * FTM_PEER_SET_ATTR_ADDR - Set mac address for given ftm_peer_attr instance
  * 
- * @arg attr       ftm_peer_attr pointer
- * @arg mac_addr   an array containing six u8 numbers.
+ * @param attr       ftm_peer_attr pointer
+ * @param mac_addr   an array containing six u8 numbers.
  * 
+ * @note
  * This is the only legal way to set a peer's mac address. Given array must
  * be allocated via malloc().
  */
@@ -171,10 +177,11 @@ struct ftm_results_wrap {
 /**
  * alloc_ftm_config - Allocate a new ftm config with given configurations
  * 
- * @arg interface_name   Interface name for wireless card
- * @arg peers            Array of attributes of different peers
- * @arg peer_count       Number of peers
+ * @param interface_name   Interface name for wireless card
+ * @param peers            Array of attributes of different peers
+ * @param peer_count       Number of peers
  * 
+ * @note
  * Each of peers must be allocated using alloc_ftm_peer().
  */
 struct ftm_config *alloc_ftm_config(const char *interface_name,
@@ -184,8 +191,9 @@ struct ftm_config *alloc_ftm_config(const char *interface_name,
 /**
  * free_ftm_config - Free the allocated ftm config
  * 
- * @arg config   ftm config to be freed
+ * @param config   ftm config to be freed
  * 
+ * @note
  * Call this function only when the config is no longer used.
  */
 void free_ftm_config(struct ftm_config *config);
@@ -193,6 +201,7 @@ void free_ftm_config(struct ftm_config *config);
 /**
  * alloc_ftm_peer - Allocate a new peer attribute
  * 
+ * @note
  * The allocated instance will be automatically freed when calling 
  * free_ftm_results_wrap with associated ftm_results_wrap pointer. 
  * Don't free it on your own.
@@ -202,6 +211,7 @@ struct ftm_peer_attr *alloc_ftm_peer();
 /**
  * alloc_ftm_resp_attr: Allocate a new ftm_resp_attr instance.
  * 
+ * @note
  * This is for internal use. You don't need to allocate a
  * response attribute on your own.
  */
@@ -211,8 +221,9 @@ struct ftm_resp_attr *alloc_ftm_resp_attr();
  * alloc_ftm_results_wrap - Allocate an ftm_results_wrap container 
  * to store FTM results with given peer count.
  * 
- * @arg count   Number of peers
+ * @param count   Number of peers
  * 
+ * @note
  * The count should be equal to the number of ftm_peer_attr defined
  * in ftm_config. This is for internal use. You don't need to allocate
  * on your own.
@@ -222,6 +233,7 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
 /**
  * free_ftm_results_wrap - Free the allocated results wrap
  * 
+ * @note
  * This function will free all the associated ftm_resp_attr pointers
  * and the pointer to the array itself.This is for internal use. 
  * You don't need to free on your own.

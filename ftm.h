@@ -23,9 +23,9 @@
  * ftm - Start FTM with given config, receive response with given
  * callback, for given times
  * 
- * @arg config    The config used to start FTM
- * @arg handler   The callback to handle measurement results, can be NULL
- * @arg attemps   How many times to measure distance
+ * @param config    The config used to start FTM
+ * @param handler   The callback to handle measurement results, can be NULL
+ * @param attemps   How many times to measure distance
  */
 int ftm(struct ftm_config *config,
         void (*handler)(struct ftm_results_wrap *wrap),
@@ -43,15 +43,16 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PUT - Set attribute from ftm_peer_attr
  * 
- * @arg msg         the configuring netlink message
- * @arg attr        ftm_peer_attr pointer
- * @arg prefix      prefix of identifiers defined in nl80211.h, 
- *                  like NL80211_ATTR_
- * @arg attr_idx    suffix of identifiers defined in nl80211.h, 
- *                  like CHANNEL_WIDTH
- * @arg attr_name   variable name of ftm_peer_attr
- * @arg type        data type of the attribute, capitalized, like U8
+ * @param msg         the configuring netlink message
+ * @param attr        ftm_peer_attr pointer
+ * @param prefix      prefix of identifiers defined in nl80211.h, 
+ *                    like NL80211_ATTR_
+ * @param attr_idx    suffix of identifiers defined in nl80211.h, 
+ *                    like CHANNEL_WIDTH
+ * @param attr_name   variable name of ftm_peer_attr
+ * @param type        data type of the attribute, capitalized, like U8
  * 
+ * @note
  * Be sure that msg is in the correct hierarchy of nested attributes.
  */
 #define FTM_PUT(msg, attr, prefix, attr_idx, attr_name, type)   \
@@ -62,6 +63,7 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PEER_PUT - Set attribute for an ftm peer
  * 
+ * @note
  * This is a helper macro specified for setting attributes defined in
  * @enum l80211_peer_measurement_ftm_req.
  */
@@ -71,12 +73,13 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PUT_FLAG - Set flag attributes from ftm_peer_attr
  * 
- * @arg msg         the configuring netlink message
- * @arg attr        ftm_peer_attr pointer
- * @arg prefix      prefix of identifiers defined in nl80211.h
- * @arg attr_idx    suffix of identifiers defined in nl80211.h
- * @arg attr_name   variable name of ftm_peer_attr
+ * @param msg         the configuring netlink message
+ * @param attr        ftm_peer_attr pointer
+ * @param prefix      prefix of identifiers defined in nl80211.h
+ * @param attr_idx    suffix of identifiers defined in nl80211.h
+ * @param attr_name   variable name of ftm_peer_attr
  * 
+ * @note
  * Be sure that msg is in the correct hierarchy of nested attributes. 
  * Flag attributes are defined in nl80211.h.
  */
@@ -97,6 +100,7 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_RESP_SET_FLAG - Set flags for specific attribute
  * 
+ * @note
  * Internal use only.
  */
 #define FTM_RESP_SET_FLAG(attr, attr_name) \
@@ -106,12 +110,13 @@ int ftm(struct ftm_config *config,
  * FTM_GET - Get attributes from given nlattr pointer and store in 
  * given resp_attr instance
  * 
- * @arg ftm_attr    netlink attribute for NL80211_PMSR_TYPE_FTM
- * @arg resp_attr   resp_attr pointer
- * @arg attr_idx    suffix of identifiers
- * @arg attr_name   variable name of ftm_resp_attr
- * @arg type        data type of the attribute, lowercased, like u8.
+ * @param ftm_attr    netlink attribute for NL80211_PMSR_TYPE_FTM
+ * @param resp_attr   resp_attr pointer
+ * @param attr_idx    suffix of identifiers
+ * @param attr_name   variable name of ftm_resp_attr
+ * @param type        data type of the attribute, lowercased, like u8
  * 
+ * @note
  * Do not use this macro to get mac_addr. Use FTM_GET_ADDR instead.
  */
 #define FTM_GET(ftm_attr, resp_attr, attr_idx, attr_name, type)         \
@@ -125,8 +130,8 @@ int ftm(struct ftm_config *config,
  * FTM_GET_ADDR - Copy mac address of the peer into given ftm_resp_attr 
  * instance
  * 
- * @arg nl_attr     netlink attribute
- * @arg resp_attr   ftm_resp_attr pointer
+ * @param nl_attr     netlink attribute
+ * @param resp_attr   ftm_resp_attr pointer
  */
 #define FTM_GET_ADDR(nl_attr, resp_attr)             \
     if (nl_attr) {                                   \
@@ -137,10 +142,11 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PRINT - Print the given attribute from a response
  * 
- * @arg resp        ftm_resp_attr pointer
- * @arg attr_name   variable name of ftm_resp_attr
- * @arg specifier   specifier used in printf() for the type, like 'd'
+ * @param resp        ftm_resp_attr pointer
+ * @param attr_name   variable name of ftm_resp_attr
+ * @param specifier   specifier used in printf() for the type, like 'd'
  * 
+ * @note
  * Do not use this macro to print mac_addr. Use FTM_PRINT_ADDR instead.
  */
 #define FTM_PRINT(resp, attr_name, specifier)             \
@@ -156,7 +162,7 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_GET_ADDR - Print the mac address of the peer
  * 
- * @arg resp   ftm_resp_attr pointer
+ * @param resp   ftm_resp_attr pointer
  */
 #define FTM_PRINT_ADDR(resp)                                                   \
     if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                                 \
