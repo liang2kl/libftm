@@ -53,7 +53,7 @@ enum ftm_peer_attr_flags {
  * then set via FTM_PEER_SET_ATTR(attr, attr_name, value).
  */
 struct ftm_peer_attr {
-    uint8_t *mac_addr;
+    uint8_t mac_addr[6];
     uint32_t chan_width;
     uint32_t center_freq;
     bool asap;
@@ -163,14 +163,11 @@ struct ftm_results_wrap {
  * @param mac_addr   an array containing six u8 numbers.
  * 
  * @note
- * This is the only legal way to set a peer's mac address. Given array must
- * be allocated via malloc().
+ * This is the only legal way to set a peer's mac address.
  */
 #define FTM_PEER_SET_ATTR_ADDR(attr, mac_addr)   \
     do {                                         \
-        uint8_t *new_addr = malloc(6);           \
-        memcpy(new_addr, mac_addr, 6);           \
-        attr->mac_addr = new_addr;               \
+        memcpy(attr, attr->mac_addr, 6);         \
         attr->flags[FTM_PEER_FLAG_mac_addr] = 1; \
     } while (0)
 

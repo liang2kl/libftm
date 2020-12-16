@@ -1,6 +1,5 @@
 #include "ftm.h"
 
-
 int main(int argc, char **argv) {
     struct ftm_peer_attr *attr = alloc_ftm_peer();
     // required
