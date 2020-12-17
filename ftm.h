@@ -28,7 +28,7 @@
  * @param attemps   How many times to measure distance
  */
 int ftm(struct ftm_config *config,
-        void (*handler)(struct ftm_results_wrap *wrap),
+        void (*handler)(struct ftm_results_wrap *wrap, uint64_t attemp_idx),
         int attemps);
 
 /**
@@ -63,6 +63,8 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PEER_PUT - Set attribute for an ftm peer
  * 
+ * @see FTM_PUT
+ * 
  * @note
  * This is a helper macro specified for setting attributes defined in
  * @enum l80211_peer_measurement_ftm_req.
@@ -91,6 +93,7 @@ int ftm(struct ftm_config *config,
 /**
  * FTM_PEER_PUT_FLAG - Set flag attributes for a peer
  * 
+ * @see FTM_PUT_FLAG
  * This is a helper macro specified for setting attributes defined in
  * @enum l80211_peer_measurement_ftm_req.
  */

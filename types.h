@@ -165,9 +165,9 @@ struct ftm_results_wrap {
  * @note
  * This is the only legal way to set a peer's mac address.
  */
-#define FTM_PEER_SET_ATTR_ADDR(attr, mac_addr)   \
+#define FTM_PEER_SET_ATTR_ADDR(attr, addr)       \
     do {                                         \
-        memcpy(attr, attr->mac_addr, 6);         \
+        memcpy(attr->mac_addr, addr, 6);         \
         attr->flags[FTM_PEER_FLAG_mac_addr] = 1; \
     } while (0)
 

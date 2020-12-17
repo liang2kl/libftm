@@ -352,7 +352,8 @@ nla_put_failure:
     return 1;
 }
 
-static void print_ftm_results(struct ftm_results_wrap *results) {
+static void print_ftm_results(struct ftm_results_wrap *results, 
+                              uint64_t attemp_idx) {
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {
@@ -385,7 +386,7 @@ static void print_ftm_results(struct ftm_results_wrap *results) {
 }
 
 int ftm(struct ftm_config *config,
-        void (*handler)(struct ftm_results_wrap *wrap),
+        void (*handler)(struct ftm_results_wrap *wrap, uint64_t),
         int attemps) {
     struct nl80211_state nlstate;
     int err = nl80211_init(&nlstate);
@@ -411,9 +412,9 @@ int ftm(struct ftm_config *config,
         }
 
         if (handler)
-            handler(results_wrap);
+            handler(results_wrap, i);
         else
-            print_ftm_results(results_wrap);
+            print_ftm_results(results_wrap, i);
         
         free_ftm_results_wrap(results_wrap);
         continue;
