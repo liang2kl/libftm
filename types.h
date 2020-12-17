@@ -23,6 +23,8 @@ enum ftm_peer_attr_flags {
     FTM_PEER_FLAG_mac_addr,
     FTM_PEER_FLAG_chan_width,
     FTM_PEER_FLAG_center_freq,
+    FTM_PEER_FLAG_center_freq_1,
+    FTM_PEER_FLAG_center_freq_2,
     FTM_PEER_FLAG_asap,
     FTM_PEER_FLAG_preamble,
     FTM_PEER_FLAG_num_bursts_exp,
@@ -56,6 +58,8 @@ struct ftm_peer_attr {
     uint8_t mac_addr[6];
     uint32_t chan_width;
     uint32_t center_freq;
+    uint32_t center_freq_1;
+    uint32_t center_freq_2;
     bool asap;
     uint32_t preamble;
     uint8_t num_bursts_exp;
