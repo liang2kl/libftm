@@ -34,7 +34,7 @@ int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
 
     if (res != 6) {
         printf("Invalid MAC address\n");
-        return NULL;
+        return 1;
     }
 
     FTM_PEER_SET_ATTR_ADDR(attr, addr);
@@ -147,10 +147,10 @@ struct ftm_config *parse_config_file(const char *file_name,
         if (parse_peer_config(attr, line)) {
             printf("Invalid FTM configuration at line %d!\n",
                    line_num);
-            return 1;
+            return NULL;
         }
     }
-    struct ftm_config *config = alloc_ftm_config(if_name, peers, line_num);
+    struct ftm_config *config = alloc_ftm_config(if_name, peers, line_num - 1);
     if (!config) {
         fprintf(stderr, "Fail to allocate config!\n");
     }

@@ -56,13 +56,13 @@ static void custom_result_handler(struct ftm_results_wrap *results,
 
 
 int main(int argc, char **argv) {
-    if (argc != 3) {
+    if (argc != 4) {
         printf("Parameter error!\n");
         return 1;
     }
-    const char* if_name = argv[0];
-    const char* file_name = argv[1];
-    attemps = atoi(argv[2]);
+    const char* if_name = argv[1];
+    const char* file_name = argv[2];
+    attemps = atoi(argv[3]);
 
     struct ftm_config *config = parse_config_file(file_name, if_name);
     if (!config) {
