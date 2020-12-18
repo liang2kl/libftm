@@ -85,7 +85,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4 || argc != 3) {
+    if (argc != 4 && argc != 3) {
         printf("Invalid arguments!\n");
         printf("Valid args: <if_name> <file_path> [<attemps>]\n");
         return 1;
