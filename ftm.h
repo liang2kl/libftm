@@ -13,11 +13,21 @@
 /**
  * DOC: Start a fine timing measurement
  * 
- * The following section describes the API to start a fine timing 
- * measurement (FTM) and handle the results. Additional information 
- * of corresponding data types and methods to configure the request 
- * is provided in types.h.
+ * The following section describes the API (and the only API needed) 
+ * to start a fine timing measurement (FTM) and handle the results. 
+ * Additional information of corresponding data types and methods to 
+ * configure the request is provided in types.h.
  */
+
+/**
+ * typedef ftm_result_handler - Function type to handle FTM result
+ * 
+ * @wrap: FTM results, @see ftm_results_wrap
+ * @attempt_idx: The index of the current attempt, starting from 0
+ * @arg: Pointer passed in when allocating ftm_config
+ */
+typedef void (*ftm_result_handler)(struct ftm_results_wrap *wrap,
+                                   uint64_t attempt_idx, void *arg);
 
 /**
  * ftm - Start FTM with given config, receive response with given
@@ -25,11 +35,11 @@
  * 
  * @param config    The config used to start FTM
  * @param handler   The callback to handle measurement results, can be NULL
- * @param attemps   How many times to measure distance
+ * @param attempts   How many times to measure distance
+ * @param arg       Any pointer you want to pass to the handler
  */
-int ftm(struct ftm_config *config,
-        void (*handler)(struct ftm_results_wrap *wrap, uint64_t attemp_idx),
-        int attemps);
+int ftm(struct ftm_config *config, ftm_result_handler handler,
+        int attempts, void *arg);
 
 /**
  * DOC: Lower-level APIs

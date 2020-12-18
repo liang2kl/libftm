@@ -1,13 +1,22 @@
-#include "ftm.h"
 #include <stdio.h>
 
-#define ATTEMPS 1000
+#include "ftm.h"
+#include "config.h"
 
-int64_t rtt_avg_stat = 0;
-int rtt_measure_count = 0;
+#define SOL 299492458
+#define RTT_TO_DIST(rtt) ((float)rtt * SOL / 1000000000000)
 
-static void custom_result_handler(struct ftm_results_wrap *results, 
-                                  uint64_t attemp_idx) {
+int attempts;
+
+struct ftm_results_stat {
+    int64_t rtt_avg_stat;
+    int rtt_measure_count;
+};
+
+static void custom_result_handler(struct ftm_results_wrap *results,
+                                  uint64_t attemp_idx, void *arg) {
+    struct ftm_results_stat **stats = arg;
+    uint line_count = 0;
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {
@@ -16,15 +25,20 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         }
 
         if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
-            rtt_avg_stat += resp->rtt_avg;
-            rtt_measure_count++;
+            stats[i]->rtt_avg_stat += resp->rtt_avg;
+            stats[i]->rtt_measure_count++;
         }
 
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
-#define __FTM_PRINT(attr_name, specifier) \
-    FTM_PRINT(resp, attr_name, specifier)
+        line_count += 2;
+#define __FTM_PRINT(attr_name, specifier)      \
+    do {                                       \
+        FTM_PRINT(resp, attr_name, specifier); \
+        line_count++;                          \
+    } while (0)
 
         FTM_PRINT_ADDR(resp);
+        line_count++;
         __FTM_PRINT(fail_reason, u);
         __FTM_PRINT(burst_index, u);
         __FTM_PRINT(num_ftmr_attemps, u);
@@ -42,47 +56,75 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         __FTM_PRINT(dist_variance, lu);
         __FTM_PRINT(dist_spread, lu);
 
-        printf("\n%-19s%ld\n", "rtt_avg_avg", 
-               rtt_avg_stat / rtt_measure_count);
+        if (stats[i]->rtt_measure_count) {
+            int64_t rtt =
+                stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count;
+            printf("\n%-19s%ld\n", "rtt_avg_avg", rtt);
+            printf("%-19s%.3f %s\n", "dist_avg_avg", RTT_TO_DIST(rtt), "m");
+            line_count += 3;
+        }
 
+        if (resp->flags[FTM_RESP_FLAG_rtt_correct] &&
+            stats[i]->rtt_measure_count) {
+            int64_t corrected_rtt =
+                stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count +
+                resp->rtt_correct;
+            printf("\n%-19s%ld\n", "corrected_rtt", corrected_rtt);
+            printf("%-19s%.3f\n", "corrected_dist",
+                   RTT_TO_DIST(corrected_rtt));
+            line_count += 3;
+        }
     }
-    if (attemp_idx == ATTEMPS - 1)
+    if (attemp_idx == attempts - 1)
         return;
-    for (int i = 0; i < (FTM_RESP_FLAG_MAX + 2 + 2) * results->count; i++) {
+    
+    /* flush output */
+    for (int i = 0; i < line_count; i++) {
         printf("\033[A\33[2K");
     }
 }
 
 int main(int argc, char **argv) {
-    struct ftm_peer_attr *attr = alloc_ftm_peer();
-    // required
-    uint8_t mac_addr[6] = {0x0a, 0x83, 0xa1, 0x15, 0xbf, 0x50};
-    FTM_PEER_SET_ATTR_ADDR(attr, mac_addr);
-    FTM_PEER_SET_ATTR(attr, asap, 1);
-    FTM_PEER_SET_ATTR(attr, center_freq, 2412);
-    FTM_PEER_SET_ATTR(attr, chan_width, NL80211_CHAN_WIDTH_20);
-    FTM_PEER_SET_ATTR(attr, preamble, NL80211_PREAMBLE_HT);
-
-    // optional
-    FTM_PEER_SET_ATTR(attr, ftms_per_burst, 5);
-    FTM_PEER_SET_ATTR(attr, num_ftmr_retries, 5);
-
-    struct ftm_peer_attr *peers[] = {attr};
-
-    // the only interface to communicate with the tool
-    struct ftm_config *config = alloc_ftm_config("wlp3s0", peers, 1);
-
-    if (!config) {
-        fprintf(stderr, "Fail to allocate config!\n");
+    if (argc != 4 && argc != 3) {
+        printf("Invalid arguments!\n");
+        printf("Valid args: <if_name> <file_path> [<attemps>]\n");
         return 1;
     }
+    const char* if_name = argv[1];
+    const char* file_name = argv[2];
+    attempts = 1;
+    if (argc == 4)
+        attempts = atoi(argv[3]);
 
-    // start FTM
-    int err = ftm(config, custom_result_handler, ATTEMPS);
+    /* generate config from config file */
+    struct ftm_config *config = parse_config_file(file_name, if_name);
+    if (!config) {
+        fprintf(stderr, "Fail to parse config!\n");
+        return 1;
+    }
+    
+    /* initialize our data */
+    struct ftm_results_stat **stats =
+        malloc(config->peer_count * sizeof(struct ftm_results_stat*));
+    for (int i = 0; i < config->peer_count; i++) {
+        stats[i] = malloc(sizeof(struct ftm_results_stat));
+        stats[i]->rtt_avg_stat = 0;
+        stats[i]->rtt_measure_count = 0;
+    }
+
+    /* 
+     * start FTM using the config we created, our custom handler,
+     * the attempt number we designated, and the pointer to our data
+     */
+    int err = ftm(config, custom_result_handler, attempts, stats);
     if (err)
         printf("FTM measurement failed!\n");
 
-    // clean up
+    /* clean up */
+    for (int i = 0; i < config->peer_count; i++) {
+        free(stats[i]);
+    }
+    free(stats);
     free_ftm_config(config);
 
     return 0;
