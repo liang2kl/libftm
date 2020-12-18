@@ -42,8 +42,22 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config) {
         malloc(config->peer_count * sizeof(struct ftm_resp_attr *));
     for (int i = 0; i < config->peer_count; i++) {
         results_wrap->results[i] = alloc_ftm_resp_attr();
+        /* set mac_addr to the result */
+        if (config->peers[i]->flags[FTM_PEER_FLAG_mac_addr]) {
+            memcpy(results_wrap->results[i]->mac_addr,
+                   config->peers[i]->mac_addr, 6);
+        } else {
+            fprintf(stderr,
+                    "No mac address info for target #%d in config!\n", i);
+            return NULL;
+        }
+        /* set rtt_correct to the result, identified by mac_addr */
+        if (config->peers[i]->flags[FTM_PEER_FLAG_rtt_correct]) {
+            results_wrap->results[i]->flags[FTM_RESP_FLAG_rtt_correct] = 1;
+            results_wrap->results[i]->rtt_correct =
+                config->peers[i]->rtt_correct;
+        }
     }
-    results_wrap->config = config;
     results_wrap->count = config->peer_count;
     return results_wrap;
 };

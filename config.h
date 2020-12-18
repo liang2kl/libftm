@@ -6,7 +6,8 @@
  * DOC: Format of ftm config file
  * 
  * Each line in the file represents a target, with the following format:
- * <addr> bw=<[20|40|80|80+80|160]> 
+ * <addr> 
+ * bw=<[20|40|80|80+80|160]> 
  * cf=<center_freq> 
  * [cf1=<center_freq1>] 
  * [cf2=<center_freq2>] 
@@ -17,10 +18,12 @@
  * [retries=<num of retries>] 
  * [burst_duration=<burst duration>] 
  * [tb]
+ * [rtt_correct=<rtt to be compensated>]
  * 
  * @note
- * Each peer should take only one line, although the doc above seperates the 
- * attributes into different lines.
+ * Each peer must take only one line, although the doc above seperates the 
+ * attributes into different lines. Append more configuration options by 
+ * modifing parse_config_file() in config.c.
  */
 
 /**
