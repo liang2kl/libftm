@@ -3,6 +3,7 @@
 #include "ftm.h"
 #include "config.h"
 
+#define SOL 299492458
 
 int64_t rtt_avg_stat = 0;
 int rtt_measure_count = 0;
@@ -24,7 +25,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         }
 
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
-        line_count++;
+        line_count += 2;
 #define __FTM_PRINT(attr_name, specifier)      \
     do {                                       \
         FTM_PRINT(resp, attr_name, specifier); \
@@ -55,9 +56,14 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         line_count += 2;
         
         if (resp->flags[FTM_RESP_FLAG_rtt_correct]) {
-            printf("\n%-19s%ld\n", "rtt_avg_avg_corrected",
-                   rtt_avg_stat / rtt_measure_count + resp->rtt_correct);
-            line_count += 2;
+            int64_t corrected_rtt = rtt_avg_stat / rtt_measure_count +
+                                    resp->rtt_correct;
+            printf("\n%-19s%ld\n", "corrected_rtt",
+                   corrected_rtt);
+            printf("%-19s%f\n", "corrected_dist",
+                   (float)corrected_rtt * SOL / 1000000000000);
+
+            line_count += 3;
         }
     }
     if (attemp_idx == attemps - 1)
