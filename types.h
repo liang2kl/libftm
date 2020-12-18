@@ -34,6 +34,8 @@ enum ftm_peer_attr_flags {
     FTM_PEER_FLAG_num_ftmr_retries,
     FTM_PEER_FLAG_trigger_based,
 
+    FTM_PEER_FLAG_rtt_correct,
+
     /* keep last */
     FTM_PEER_FLAG_MAX
 };
@@ -69,6 +71,8 @@ struct ftm_peer_attr {
     uint8_t num_ftmr_retries;
     bool trigger_based;
 
+    int64_t rtt_correct;
+
     /* internal use */
     uint8_t flags[FTM_PEER_FLAG_MAX];
 };
@@ -100,6 +104,7 @@ enum ftm_resp_attr_flags {
     FTM_RESP_FLAG_dist_variance,
     FTM_RESP_FLAG_dist_spread,
 
+    FTM_RESP_FLAG_rtt_correct,
     /* keep last */
     FTM_RESP_FLAG_MAX
 };
@@ -134,6 +139,7 @@ struct ftm_resp_attr {
     uint64_t dist_variance;
     uint64_t dist_spread;
 
+    uint64_t rtt_correct;
     /* internal use */
     uint8_t flags[FTM_RESP_FLAG_MAX];
 };
@@ -142,6 +148,7 @@ struct ftm_results_wrap {
     struct ftm_resp_attr ** results;
     int count;
     int *state;
+    struct ftm_config *config;
 };
 
 /**
@@ -229,7 +236,7 @@ struct ftm_resp_attr *alloc_ftm_resp_attr();
  * in ftm_config. This is for internal use. You don't need to allocate
  * on your own.
  */
-struct ftm_results_wrap *alloc_ftm_results_wrap(int count);
+struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config);
 
 /**
  * free_ftm_results_wrap - Free the allocated results wrap

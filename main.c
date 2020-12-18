@@ -10,6 +10,7 @@ int attemps;
 
 static void custom_result_handler(struct ftm_results_wrap *results,
                                   uint64_t attemp_idx) {
+    uint line_count = 0;
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {
@@ -23,10 +24,15 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         }
 
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
-#define __FTM_PRINT(attr_name, specifier) \
-    FTM_PRINT(resp, attr_name, specifier)
+        line_count++;
+#define __FTM_PRINT(attr_name, specifier)      \
+    do {                                       \
+        FTM_PRINT(resp, attr_name, specifier); \
+        line_count++;                          \
+    } while (0)
 
         FTM_PRINT_ADDR(resp);
+        line_count++;
         __FTM_PRINT(fail_reason, u);
         __FTM_PRINT(burst_index, u);
         __FTM_PRINT(num_ftmr_attemps, u);
@@ -46,10 +52,17 @@ static void custom_result_handler(struct ftm_results_wrap *results,
 
         printf("\n%-19s%ld\n", "rtt_avg_avg",
                rtt_avg_stat / rtt_measure_count);
+        line_count += 2;
+        
+        if (resp->flags[FTM_RESP_FLAG_rtt_correct]) {
+            printf("\n%-19s%ld\n", "rtt_avg_avg_corrected",
+                   rtt_avg_stat / rtt_measure_count + resp->rtt_correct);
+            line_count += 2;
+        }
     }
     if (attemp_idx == attemps - 1)
         return;
-    for (int i = 0; i < (FTM_RESP_FLAG_MAX + 2 + 2) * results->count; i++) {
+    for (int i = 0; i < line_count; i++) {
         printf("\033[A\33[2K");
     }
 }

@@ -86,6 +86,9 @@ int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
             FTM_PEER_SET_ATTR(attr, trigger_based, 1);
             FTM_PEER_SET_ATTR(attr, preamble, NL80211_PREAMBLE_HE);
             preamble = true;
+        } else if (strncmp(pos, "rtt_correct", 11) == 0) {
+            FTM_PEER_SET_ATTR(attr, rtt_correct,
+                              strtol(pos + 11, &tmp, 0));
         } else {
             printf("Unknown parameter %s\n", pos);
             return 1;

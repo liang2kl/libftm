@@ -1,1 +1,1 @@
-0a:83:a1:15:bf:50 bw=20 cf=2412 asap retries=5 ftms_per_burst=5
+0a:83:a1:15:bf:50 bw=20 cf=2412 asap retries=5 ftms_per_burst=5 rtt_correct=26814

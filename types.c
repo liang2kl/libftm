@@ -35,13 +35,16 @@ struct ftm_peer_attr *alloc_ftm_peer() {
     return peer;
 }
 
-struct ftm_results_wrap *alloc_ftm_results_wrap(int count) {
-    struct ftm_results_wrap *results_wrap = malloc(sizeof(struct ftm_results_wrap));
-    results_wrap->results = malloc(count * sizeof(struct ftm_resp_attr*));
-    for (int i = 0; i < count; i++) {
+struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config) {
+    struct ftm_results_wrap *results_wrap =
+        malloc(sizeof(struct ftm_results_wrap));
+    results_wrap->results =
+        malloc(config->peer_count * sizeof(struct ftm_resp_attr *));
+    for (int i = 0; i < config->peer_count; i++) {
         results_wrap->results[i] = alloc_ftm_resp_attr();
     }
-    results_wrap->count = count;
+    results_wrap->config = config;
+    results_wrap->count = config->peer_count;
     return results_wrap;
 };
 

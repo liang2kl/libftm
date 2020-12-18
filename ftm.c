@@ -306,10 +306,14 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
 
+        if (results_wrap->config->peers[index]->flags[FTM_PEER_FLAG_rtt_correct])
+            resp_attr->rtt_correct =
+                results_wrap->config->peers[index]->flags[FTM_PEER_FLAG_rtt_correct];
+                
 #define __FTM_GET(attr_idx, attr_name, type) \
     FTM_GET(ftm, resp_attr, attr_idx, attr_name, type)
 
-        FTM_GET_ADDR(peer_tb[NL80211_PMSR_PEER_ATTR_ADDR], resp_attr);
+                                     FTM_GET_ADDR(peer_tb[NL80211_PMSR_PEER_ATTR_ADDR], resp_attr);
         __FTM_GET(FAIL_REASON, fail_reason, u32);
         __FTM_GET(BURST_INDEX, burst_index, u32);
         __FTM_GET(NUM_FTMR_ATTEMPTS, num_ftmr_attemps, u32);
@@ -332,8 +336,9 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     return 0;
 }
 
-static int listen_ftm_result(struct nl80211_state *state, struct ftm_results_wrap *results_wrap) {
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT); // use NL_CB_DEBUG when debugging
+static int listen_ftm_result(struct nl80211_state *state,
+                             struct ftm_results_wrap *results_wrap) {
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);  // use NL_CB_DEBUG when debugging
     if (!cb)
         return 1;
 
@@ -397,7 +402,7 @@ int ftm(struct ftm_config *config,
 
     for (int i = 0; i < attemps; i++) {
         struct ftm_results_wrap *results_wrap =
-            alloc_ftm_results_wrap(config->peer_count);
+            alloc_ftm_results_wrap(config);
 
         err = start_ftm(&nlstate, config);
         if (err) {
