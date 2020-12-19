@@ -14,7 +14,7 @@ struct ftm_results_stat {
 };
 
 static void custom_result_handler(struct ftm_results_wrap *results,
-                                  uint64_t attemp_idx, void *arg) {
+                                  uint attemps, uint attemp_idx, void *arg) {
     struct ftm_results_stat **stats = arg;
     uint line_count = 0;
     for (int i = 0; i < results->count; i++) {

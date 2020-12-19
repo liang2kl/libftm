@@ -18,6 +18,7 @@
  * typedef ftm_result_handler - Function type to handle FTM result
  * 
  * @wrap: FTM results, @see ftm_results_wrap
+ * @attempt: Total attempts
  * @attempt_idx: The index of the current attempt, starting from 0
  * @arg: Pointer passed in when allocating ftm_config
  * 
@@ -25,8 +26,8 @@
  * The results will be freed after calling this callback. Do not keep
  * a pointer to it.
  */
-typedef void (*ftm_result_handler)(struct ftm_results_wrap *wrap,
-                                   uint64_t attempt_idx, void *arg);
+typedef void (*ftm_result_handler)(struct ftm_results_wrap *results,
+                                   uint attemps, uint attemp_idx, void *arg);
 
 /**
  * ftm - Start FTM with given config, receive response with given
