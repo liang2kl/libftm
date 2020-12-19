@@ -44,6 +44,7 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config) {
         results_wrap->results[i] = alloc_ftm_resp_attr();
         /* set mac_addr to the result */
         if (config->peers[i]->flags[FTM_PEER_FLAG_mac_addr]) {
+            results_wrap->results[i]->flags[FTM_RESP_FLAG_mac_addr] = 1;
             memcpy(results_wrap->results[i]->mac_addr,
                    config->peers[i]->mac_addr, 6);
         } else {
