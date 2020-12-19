@@ -37,6 +37,8 @@ typedef void (*ftm_result_handler)(struct ftm_results_wrap *results,
  * @param handler   The callback to handle measurement results, can be NULL
  * @param attempts  How many times to measure distance
  * @param arg       Any pointer you want to pass to the handler
+ * 
+ * @return 0 on success, 1 on failure
  */
 int ftm(struct ftm_config *config, ftm_result_handler handler,
         int attempts, void *arg);

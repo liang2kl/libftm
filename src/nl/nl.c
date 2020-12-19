@@ -127,7 +127,7 @@ int nl_handle_msg(struct nl80211_state *state, int type,
         nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
         nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
         nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
-    } else if (type == NL_SET_NO_SEQ_CHECK) {
+    } else if (type == NL_RECV_NO_SEQ_CHECK) {
         nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
     }
 

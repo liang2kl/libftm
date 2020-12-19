@@ -210,6 +210,8 @@ struct ftm_results_wrap {
  * 
  * @note
  * Each of peers must be allocated using alloc_ftm_peer().
+ * 
+ * @return a valid ftm_config pointer on success, NULL on failure.
  */
 struct ftm_config *alloc_ftm_config(const char *interface_name,
                                     struct ftm_peer_attr **peers,
@@ -228,6 +230,8 @@ void free_ftm_config(struct ftm_config *config);
 /**
  * alloc_ftm_peer - Allocate a new peer attribute
  * 
+ * @return a valid ftm_peer_attr pointer on success, NULL on failure.
+ * 
  * @note
  * The allocated instance will be automatically freed when calling 
  * free_ftm_results_wrap with associated ftm_results_wrap pointer. 
@@ -237,6 +241,8 @@ struct ftm_peer_attr *alloc_ftm_peer();
 
 /**
  * alloc_ftm_resp_attr: Allocate a new ftm_resp_attr instance.
+ * 
+ * @return a valid ftm_resp_attr pointer on success, NULL on failure.
  * 
  * @note
  * This is for internal use. You don't need to allocate a
@@ -249,6 +255,8 @@ struct ftm_resp_attr *alloc_ftm_resp_attr();
  * to store FTM results with given peer count.
  * 
  * @param config   config used to start FTM
+ * 
+ * @return a valid ftm_results_wrap pointer on success, NULL on failure.
  * 
  * @note
  * This is for internal use. You don't need to allocate

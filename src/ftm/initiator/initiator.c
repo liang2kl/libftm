@@ -236,7 +236,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 static int listen_ftm_result(struct nl80211_state *state,
                              struct ftm_results_wrap *results_wrap) {
     struct nl_cb_arg arg = alloc_nl_cb_arg(results_wrap);
-    int err = nl_handle_msg(state, NL_SET_NO_SEQ_CHECK, NULL, handle_ftm_result,
+    int err = nl_handle_msg(state, NL_RECV_NO_SEQ_CHECK, NULL, handle_ftm_result,
                             &arg);
     return err;
 }

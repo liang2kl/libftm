@@ -31,6 +31,8 @@
  * 
  * @param file_name   relative or absolute path of the config file
  * @param if_name     interface name
+ * 
+ * @return a valid ftm_config pointer on success, NULL on failure.
  */
 struct ftm_config *parse_config_file(const char *file_name,
                                      const char *if_name);
