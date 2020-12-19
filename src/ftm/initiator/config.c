@@ -36,53 +36,38 @@ int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
     str += consumed;
     pos = strtok_r(str, delims, &save_ptr);
 
-#define INVALID_ATTR(attr_name)                    \
-    if (*tmp) {                                    \
-        printf("Invalid " #attr_name " value!\n"); \
-        goto return_err;                           \
+#define __SET_ATTR(entry, length, attr_name)                  \
+    if (strncmp(pos, #entry "=", length + 1) == 0) {          \
+        FTM_PEER_SET_ATTR(attr, attr_name,                    \
+                          strtol(pos + length + 1, &tmp, 0)); \
+        if (*tmp) {                                           \
+            printf("Invalid " #attr_name " value!\n");        \
+            goto return_err;                                  \
+        }                                                     \
+        pos = strtok_r(NULL, delims, &save_ptr);              \
+        continue;                                             \
     }
-#define __SET_ATTR(attr_name, value)               \
-    do {                                           \
-        FTM_PEER_SET_ATTR(attr, attr_name, value); \
-        INVALID_ATTR(attr_name);                   \
-    } while (0)
 
     while (pos) {
-        if (strncmp(pos, "cf=", 3) == 0) {
-            __SET_ATTR(center_freq, strtol(pos + 3, &tmp, 0));
-        } else if (strncmp(pos, "bw=", 3) == 0) {
-            bw = pos + 3;
-            FTM_PEER_SET_ATTR(attr, center_freq, str_to_bw(bw));
-        } else if (strncmp(pos, "cf1=", 4) == 0) {
-            __SET_ATTR(center_freq_1,
-                       strtol(pos + 4, &tmp, 0));
-        } else if (strncmp(pos, "cf2=", 4) == 0) {
-            __SET_ATTR(center_freq_2,
-                       strtol(pos + 4, &tmp, 0));
-        } else if (strncmp(pos, "bursts_exp=", 11) == 0) {
-            __SET_ATTR(num_bursts_exp,
-                       strtol(pos + 11, &tmp, 0));
-        } else if (strncmp(pos, "burst_period=", 13) == 0) {
-            __SET_ATTR(burst_period,
-                       strtol(pos + 13, &tmp, 0));
-        } else if (strncmp(pos, "retries=", 8) == 0) {
-            __SET_ATTR(num_ftmr_retries,
-                       strtol(pos + 8, &tmp, 0));
-        } else if (strncmp(pos, "burst_duration=", 15) == 0) {
-            __SET_ATTR(burst_duration,
-                       strtol(pos + 15, &tmp, 0));
-        } else if (strncmp(pos, "ftms_per_burst=", 15) == 0) {
-            __SET_ATTR(ftms_per_burst,
-                       strtol(pos + 15, &tmp, 0));
-        } else if (strcmp(pos, "asap") == 0) {
+        __SET_ATTR(cf, 2, center_freq);
+        __SET_ATTR(cf1, 3, center_freq_1);
+        __SET_ATTR(cf2, 3, center_freq_2);
+        __SET_ATTR(bursts_exp, 10, num_bursts_exp);
+        __SET_ATTR(burst_period, 12, burst_period);
+        __SET_ATTR(retries, 7, num_ftmr_retries);
+        __SET_ATTR(burst_duration, 14, burst_duration);
+        __SET_ATTR(ftms_per_burst, 14, ftms_per_burst);
+        __SET_ATTR(rtt_correct, 11, rtt_correct);
+
+        if (strcmp(pos, "asap") == 0) {
             FTM_PEER_SET_ATTR(attr, asap, 1);
         } else if (strncmp(pos, "tb", 2) == 0) {
             FTM_PEER_SET_ATTR(attr, trigger_based, 1);
             FTM_PEER_SET_ATTR(attr, preamble, NL80211_PREAMBLE_HE);
             preamble = true;
-        } else if (strncmp(pos, "rtt_correct=", 12) == 0) {
-            __SET_ATTR(rtt_correct,
-                       strtol(pos + 12, &tmp, 0));
+        } else if (strncmp(pos, "bw=", 3) == 0) {
+            bw = pos + 3;
+            FTM_PEER_SET_ATTR(attr, center_freq, str_to_bw(bw));
         } else {
             printf("Unknown parameter %s\n", pos);
             return 1;
