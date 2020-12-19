@@ -164,14 +164,10 @@ struct ftm_resp_attr {
  * 
  * @results: array of response attributes
  * @count: number of responses (equal to the number of peers)
- * @state: only for internal use
  */
 struct ftm_results_wrap {
     struct ftm_resp_attr ** results;
     int count;
-
-    /* internal use */
-    int *state;
 };
 
 /**

@@ -103,7 +103,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct nl_cb_arg *cb_arg = arg;
     struct ftm_results_wrap *results_wrap = cb_arg->arg;
     if (gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_COMPLETE) {
-        *results_wrap->state = 0;
+        *cb_arg->state = 0;
         return -1;
     }
     if (gnlh->cmd != NL80211_CMD_PEER_MEASUREMENT_RESULT)
