@@ -253,11 +253,10 @@ struct ftm_resp_attr *alloc_ftm_resp_attr();
  * alloc_ftm_results_wrap - Allocate an ftm_results_wrap container 
  * to store FTM results with given peer count.
  * 
- * @param count   Number of peers
+ * @param config   config used to start FTM
  * 
  * @note
- * The count should be equal to the number of ftm_peer_attr defined
- * in ftm_config. This is for internal use. You don't need to allocate
+ * This is for internal use. You don't need to allocate
  * on your own.
  */
 struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config);

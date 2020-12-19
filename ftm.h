@@ -35,7 +35,7 @@ typedef void (*ftm_result_handler)(struct ftm_results_wrap *wrap,
  * 
  * @param config    The config used to start FTM
  * @param handler   The callback to handle measurement results, can be NULL
- * @param attempts   How many times to measure distance
+ * @param attempts  How many times to measure distance
  * @param arg       Any pointer you want to pass to the handler
  */
 int ftm(struct ftm_config *config, ftm_result_handler handler,
@@ -177,11 +177,12 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
  * 
  * @param resp   ftm_resp_attr pointer
  */
-#define FTM_PRINT_ADDR(resp)                                                   \
-    if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                                 \
-        uint8_t *addr = resp->mac_addr;                                        \
-        printf("%-19s%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n", "mac_addr", \
-               addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);          \
+#define FTM_PRINT_ADDR(resp)                                       \
+    if (resp->flags[FTM_RESP_FLAG_mac_addr]) {                     \
+        uint8_t *addr = resp->mac_addr;                            \
+        printf("%-19s%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n", \
+               "mac_addr", addr[0], addr[1], addr[2], addr[3],     \
+               addr[4], addr[5]);                                  \
     }
 
 #endif /* _FTM_H */
