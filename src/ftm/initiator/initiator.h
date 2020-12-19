@@ -27,7 +27,7 @@
  * a pointer to it.
  */
 typedef void (*ftm_result_handler)(struct ftm_results_wrap *results,
-                                   uint attemps, uint attemp_idx, void *arg);
+                                   uint attempts, uint attempt_idx, void *arg);
 
 /**
  * ftm - Start FTM with given config, receive response with given
