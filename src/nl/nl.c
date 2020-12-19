@@ -121,7 +121,7 @@ int nl_handle_msg(struct nl80211_state *state, int type,
 
     err = 1;
     if (arg)
-        arg->state = err;
+        arg->state = &err;
 
     if (type == NL_SEND_MSG) {
         nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
