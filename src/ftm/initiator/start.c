@@ -50,7 +50,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             int64_t rtt =
                 stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count;
             printf("\n%-19s%ld\n", "rtt_avg_avg", rtt);
-            printf("%-19s%.3f %s\n", "dist_avg_avg", RTT_TO_DIST(rtt), "m");
+            printf("%-19s%-7.3f%s\n", "dist_avg_avg", RTT_TO_DIST(rtt), "m");
             line_count += 3;
         }
 
@@ -60,8 +60,8 @@ static void custom_result_handler(struct ftm_results_wrap *results,
                 stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count +
                 resp->rtt_correct;
             printf("\n%-19s%ld\n", "corrected_rtt", corrected_rtt);
-            printf("%-19s%.3f\n", "corrected_dist",
-                   RTT_TO_DIST(corrected_rtt));
+            printf("%-19s%-7.3f%s\n", "corrected_dist",
+                   RTT_TO_DIST(corrected_rtt), "m");
             line_count += 3;
         }
     }
@@ -70,11 +70,11 @@ static void custom_result_handler(struct ftm_results_wrap *results,
 
     /* flush output */
     for (int i = 0; i < line_count; i++) {
-        printf("\033[A\33[2K");
+        printf("\033[A\033[2K");
     }
 }
 
-static int my_start_ftm(int argc, char **argv) {
+int my_start_ftm(int argc, char **argv) {
     if (argc != 4 && argc != 3) {
         printf("Invalid arguments!\n");
         printf("Valid args: <if_name> <file_path> [<attemps>]\n");

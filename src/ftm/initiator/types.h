@@ -22,6 +22,36 @@ struct ftm_config {
 };
 
 /**
+ * enum ftm_peer_attr_flags - Record what attributes are set
+ * 
+ * @note
+ * Internal use only. Modification is needed if you add additional attribute
+ * into @struct ftm_peer_attr. Please keep the suffix the same as the variable
+ * name in struct ftm_peer_attr.
+ */
+enum ftm_peer_attr_flags {
+    FTM_PEER_FLAG_mac_addr,
+    FTM_PEER_FLAG_chan_width,
+    FTM_PEER_FLAG_center_freq,
+    FTM_PEER_FLAG_center_freq_1,
+    FTM_PEER_FLAG_center_freq_2,
+    FTM_PEER_FLAG_asap,
+    FTM_PEER_FLAG_preamble,
+    FTM_PEER_FLAG_num_bursts_exp,
+    FTM_PEER_FLAG_burst_period,
+    FTM_PEER_FLAG_burst_duration,
+    FTM_PEER_FLAG_ftms_per_burst,
+    FTM_PEER_FLAG_num_ftmr_retries,
+    FTM_PEER_FLAG_trigger_based,
+
+    /* extra attributes */
+    FTM_PEER_FLAG_rtt_correct,
+
+    /* keep last */
+    FTM_PEER_FLAG_MAX
+};
+
+/**
  * struct ftm_peer_attr - Attributes for a peer
  * 
  * @mac_addr: defined by @NL80211_PMSR_PEER_ATTR_ADDR
@@ -60,33 +90,36 @@ struct ftm_peer_attr {
 };
 
 /**
- * enum ftm_peer_attr_flags - Record what attributes are set
+ * enum ftm_resp_attr_flags - Record what attributes exist
  * 
  * @note
  * Internal use only. Modification is needed if you add additional attribute
- * into @struct ftm_peer_attr. Please keep the suffix the same as the variable
- * name in struct ftm_peer_attr.
+ * into @struct ftm_resp_attr. Please keep the suffix the same as the variable
+ * name in struct ftm_resp_attr.
  */
-enum ftm_peer_attr_flags {
-    FTM_PEER_FLAG_mac_addr,
-    FTM_PEER_FLAG_chan_width,
-    FTM_PEER_FLAG_center_freq,
-    FTM_PEER_FLAG_center_freq_1,
-    FTM_PEER_FLAG_center_freq_2,
-    FTM_PEER_FLAG_asap,
-    FTM_PEER_FLAG_preamble,
-    FTM_PEER_FLAG_num_bursts_exp,
-    FTM_PEER_FLAG_burst_period,
-    FTM_PEER_FLAG_burst_duration,
-    FTM_PEER_FLAG_ftms_per_burst,
-    FTM_PEER_FLAG_num_ftmr_retries,
-    FTM_PEER_FLAG_trigger_based,
+enum ftm_resp_attr_flags {
+    FTM_RESP_FLAG_mac_addr,
+    FTM_RESP_FLAG_fail_reason,
+    FTM_RESP_FLAG_burst_index,
+    FTM_RESP_FLAG_num_ftmr_attemps,
+    FTM_RESP_FLAG_num_ftmr_successes,
+    FTM_RESP_FLAG_busy_retry_time,
+    FTM_RESP_FLAG_num_bursts_exp,
+    FTM_RESP_FLAG_burst_duration,
+    FTM_RESP_FLAG_ftms_per_burst,
+    FTM_RESP_FLAG_rssi_avg,
+    FTM_RESP_FLAG_rssi_spread,
+    FTM_RESP_FLAG_rtt_avg,
+    FTM_RESP_FLAG_rtt_variance,
+    FTM_RESP_FLAG_rtt_spread,
+    FTM_RESP_FLAG_dist_avg,
+    FTM_RESP_FLAG_dist_variance,
+    FTM_RESP_FLAG_dist_spread,
 
     /* extra attributes */
-    FTM_PEER_FLAG_rtt_correct,
-
+    FTM_RESP_FLAG_rtt_correct,
     /* keep last */
-    FTM_PEER_FLAG_MAX
+    FTM_RESP_FLAG_MAX
 };
 
 /**
@@ -124,39 +157,6 @@ struct ftm_resp_attr {
 
     /* internal use */
     uint8_t flags[FTM_RESP_FLAG_MAX];
-};
-
-/**
- * enum ftm_resp_attr_flags - Record what attributes exist
- * 
- * @note
- * Internal use only. Modification is needed if you add additional attribute
- * into @struct ftm_resp_attr. Please keep the suffix the same as the variable
- * name in struct ftm_resp_attr.
- */
-enum ftm_resp_attr_flags {
-    FTM_RESP_FLAG_mac_addr,
-    FTM_RESP_FLAG_fail_reason,
-    FTM_RESP_FLAG_burst_index,
-    FTM_RESP_FLAG_num_ftmr_attemps,
-    FTM_RESP_FLAG_num_ftmr_successes,
-    FTM_RESP_FLAG_busy_retry_time,
-    FTM_RESP_FLAG_num_bursts_exp,
-    FTM_RESP_FLAG_burst_duration,
-    FTM_RESP_FLAG_ftms_per_burst,
-    FTM_RESP_FLAG_rssi_avg,
-    FTM_RESP_FLAG_rssi_spread,
-    FTM_RESP_FLAG_rtt_avg,
-    FTM_RESP_FLAG_rtt_variance,
-    FTM_RESP_FLAG_rtt_spread,
-    FTM_RESP_FLAG_dist_avg,
-    FTM_RESP_FLAG_dist_variance,
-    FTM_RESP_FLAG_dist_spread,
-
-    /* extra attributes */
-    FTM_RESP_FLAG_rtt_correct,
-    /* keep last */
-    FTM_RESP_FLAG_MAX
 };
 
 /**

@@ -1,6 +1,6 @@
 #include "responder.h"
 
-static int ftm_start_responder(const char *if_name) {
+int ftm_start_responder(const char *if_name) {
     struct nl80211_state nlstate;
     int err = 0;
     err = nl80211_init(&nlstate);
@@ -19,7 +19,7 @@ static int ftm_start_responder(const char *if_name) {
     signed long long devidx = if_nametoindex(if_name);
     if (devidx == 0) {
         fprintf(stderr, "Fail to find device interface %s!\n", if_name);
-        return NULL;
+        return 1;
     }
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
     struct nlattr *ftm = nla_nest_start(msg, NL80211_ATTR_FTM_RESPONDER);
@@ -27,7 +27,7 @@ static int ftm_start_responder(const char *if_name) {
         return 1;
     nla_put_flag(msg, NL80211_FTM_RESP_ATTR_ENABLED);
     nla_nest_end(msg, ftm);
-    err = nl_handle_msg(&nlstate, NL_SEND_MSG, msg, NULL, NULL);
+    err = nl_handle_msg(&nlstate, NL_SEND_MSG, msg, NULL, NULL, NULL);
     return err;
 nla_put_failure:
     nlmsg_free(msg);

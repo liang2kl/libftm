@@ -9,7 +9,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
 #include <stdbool.h>
-#include <uapi/linux/nl80211.h>
+#include <linux/nl80211.h>
 
 struct nl80211_state {
     struct nl_sock *nl_sock;
@@ -18,6 +18,8 @@ struct nl80211_state {
 
 enum nl_send_msg_option { NL_SEND_MSG, NL_SET_NO_SEQ_CHECK };
 
-static int nl_handle_msg(struct nl80211_state *state, int type, struct nl_msg *msg,
-                         nl_recvmsg_msg_cb_t handler, void *arg);
+int nl_handle_msg(struct nl80211_state *state, int type, struct nl_msg *msg,
+                         nl_recvmsg_msg_cb_t handler, void *arg, int **status);
+
+int nl80211_init(struct nl80211_state *state);
 #endif

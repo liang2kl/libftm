@@ -6,4 +6,4 @@ struct ftm_results_stat {
     int rtt_measure_count;
 };
 
-static int my_start_ftm(int argc, char **argv);
+int my_start_ftm(int argc, char **argv);

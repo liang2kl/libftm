@@ -90,7 +90,8 @@ static int start_ftm(struct nl80211_state *state,
     err = set_ftm_config(msg, config);
     if (err)
         return 1;
-    nl_handle_msg(state, NL_SEND_MSG, msg, NULL, NULL);
+    nl_handle_msg(state, NL_SEND_MSG, msg, NULL, NULL, NULL);
+    return 0;
 nla_put_failure:
     nlmsg_free(msg);
     return 1;
@@ -233,7 +234,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 static int listen_ftm_result(struct nl80211_state *state,
                              struct ftm_results_wrap *results_wrap) {
     nl_handle_msg(state, NL_SET_NO_SEQ_CHECK, NULL, handle_ftm_result,
-                  results_wrap);
+                  results_wrap, &results_wrap->state);
 }
 
 static void print_ftm_results(struct ftm_results_wrap *results, 

@@ -8,8 +8,7 @@ int main(int argc, char **argv) {
         printf("Arguments needed!\n");
         return 1;
     }
-    argv++;
-    const char *cmd = argv[0];
+    const char *cmd = argv[1];
     if (strcmp(cmd, "start_responder") == 0) {
         if (argc != 3) {
             printf("Invalid arguments!\n");

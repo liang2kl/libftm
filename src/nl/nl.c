@@ -61,7 +61,7 @@ static int no_seq_check(struct nl_msg *msg, void *arg) {
     return NL_OK;
 }
 
-static int nl80211_init(struct nl80211_state *state) {  // from iw
+int nl80211_init(struct nl80211_state *state) {  // from iw
     int err;
 
     state->nl_sock = nl_socket_alloc();
@@ -98,9 +98,9 @@ out_handle_destroy:
     return err;
 }
 
-static int nl_handle_msg(struct nl80211_state *state, int type,
+int nl_handle_msg(struct nl80211_state *state, int type,
                        struct nl_msg *msg, nl_recvmsg_msg_cb_t handler, 
-                       void *arg) {
+                       void *arg, int **status) {
     int err;
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
     if (!cb) {
@@ -115,6 +115,8 @@ static int nl_handle_msg(struct nl80211_state *state, int type,
     }
 
     err = 1;
+    if (status)
+        *status = &err;
 
     if (type == NL_SEND_MSG) {
         nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
