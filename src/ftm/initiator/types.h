@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "nl80211.h"
 
 /**
  * struct ftm_config - Config used to start FTM

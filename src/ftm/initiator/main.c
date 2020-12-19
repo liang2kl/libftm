@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "ftm.h"
+#include "initiator.h"
 #include "config.h"
 
 #define SOL 299492458

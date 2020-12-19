@@ -1,7 +1,7 @@
 #ifndef _FTM_CONFIG_H
 #define _FTM_CONFIG_H
 
-#include "ftm.h"
+#include "initiator.h"
 /**
  * DOC: Format of ftm config file
  * 
