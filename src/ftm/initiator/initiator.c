@@ -90,7 +90,7 @@ static int start_ftm(struct nl80211_state *state,
     err = set_ftm_config(msg, config);
     if (err)
         return 1;
-    nl_handle_msg(state, NL_SEND_MSG, msg, NULL, NULL, NULL);
+    nl_handle_msg(state, NL_SEND_MSG, msg, NULL, NULL);
     return 0;
 nla_put_failure:
     nlmsg_free(msg);
@@ -99,7 +99,9 @@ nla_put_failure:
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
-    struct ftm_results_wrap *results_wrap = arg;
+    /* fetch pointer from nl_cb_arg */
+    struct nl_cb_arg *cb_arg = arg;
+    struct ftm_results_wrap *results_wrap = cb_arg->arg;
     if (gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_COMPLETE) {
         *results_wrap->state = 0;
         return -1;
@@ -233,8 +235,10 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
 
 static int listen_ftm_result(struct nl80211_state *state,
                              struct ftm_results_wrap *results_wrap) {
-    nl_handle_msg(state, NL_SET_NO_SEQ_CHECK, NULL, handle_ftm_result,
-                  results_wrap, &results_wrap->state);
+    struct nl_cb_arg arg = alloc_nl_cb_arg(results_wrap);
+    int err = nl_handle_msg(state, NL_SET_NO_SEQ_CHECK, NULL, handle_ftm_result,
+                            &arg);
+    return err;
 }
 
 static void print_ftm_results(struct ftm_results_wrap *results, 

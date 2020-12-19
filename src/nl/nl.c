@@ -98,9 +98,14 @@ out_handle_destroy:
     return err;
 }
 
+struct nl_cb_arg alloc_nl_cb_arg(void *arg) {
+    struct nl_cb_arg cb_arg = {arg, NULL};
+    return cb_arg;
+}
+
 int nl_handle_msg(struct nl80211_state *state, int type,
                        struct nl_msg *msg, nl_recvmsg_msg_cb_t handler, 
-                       void *arg, int **status) {
+                       struct nl_cb_arg * arg) {
     int err;
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
     if (!cb) {
@@ -115,8 +120,8 @@ int nl_handle_msg(struct nl80211_state *state, int type,
     }
 
     err = 1;
-    if (status)
-        *status = &err;
+    if (arg)
+        arg->state = err;
 
     if (type == NL_SEND_MSG) {
         nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
