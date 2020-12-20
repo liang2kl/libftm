@@ -76,7 +76,7 @@ int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
         pos = strtok_r(NULL, delims, &save_ptr);
     }
 
-    if (!preamble) {
+    if (!preamble && bw) {
         int preamble = -1;
         switch (str_to_bw(bw)) {
             case NL80211_CHAN_WIDTH_20_NOHT:
