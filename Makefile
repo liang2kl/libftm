@@ -4,7 +4,7 @@ TOP_PATH = $(shell pwd)
 SRC_PATH = $(TOP_PATH)/src
 TMP_PATH = $(TOP_PATH)/tmp
 OBJS_PATHS = $(foreach obj,$(OBJS),$(SRC_PATH)/$(basename $(obj))/$(obj))
-TARGET = ftm.out
+TARGET = ftm
 CC = gcc
 MAKE = make
 CFLAGS = -g
@@ -29,3 +29,7 @@ $(SRC_PATH)/nl/nl.o: $(wildcard $(SRC_PATH)/nl/*.c) $(wildcard $(SRC_PATH)/nl/*.
 .PHONY: clean
 clean:
 	find . -name *.o -type f -exec rm -rf {} \;
+
+.PHONY: install
+install: $(TARGET)
+	mv -f $(TARGET) /usr/sbin
