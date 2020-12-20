@@ -1,4 +1,4 @@
-#include "types.h"
+#include "initiator_types.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <net/if.h>

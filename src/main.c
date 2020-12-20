@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "initiator/start.h"
+#include "initiator/initiator.h"
 #include "responder/responder.h"
 
 int main(int argc, char **argv) {
