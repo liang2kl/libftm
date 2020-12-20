@@ -1,9 +1,8 @@
 #ifndef _FTM_H
 #define _FTM_H
 
-#include "../../nl/nl.h"
+#include "../nl/nl.h"
 #include "types.h"
-
 
 /**
  * DOC: Start a fine timing measurement
