@@ -1,9 +1,9 @@
 VPATH = src:src/nl:src/initiator:src/responder
-OBJS = main.o initiator.a responder.o nl.o
+OBJS = initiator.o responder.o nl.o
 TOP_PATH = $(shell pwd)
 SRC_PATH = $(TOP_PATH)/src
 TMP_PATH = $(TOP_PATH)/tmp
-OBJS_PATHS = $(patsubst %,$(TMP_PATH)/%, $(OBJS))
+OBJS_PATHS = $(foreach obj,$(OBJS),$(SRC_PATH)/$(basename $(obj))/$(obj))
 TARGET = ftm.out
 CC = gcc
 MAKE = make
@@ -13,26 +13,19 @@ LIBNL_LIB = -lnl-3 -lnl-genl-3
 
 export VPATH LIBNL_INCLUDE SRC_PATH TOP_PATH TMP_PATH CC
 
-$(TARGET): mktmp $(OBJS) $(LIBS)
-	$(CC) $(CFLAGS) $(OBJS_PATHS) $(LIBNL_INCLUDE) $(LIBNL_LIB) -o $(TOP_PATH)/$(TARGET)
-	@echo Build finished. Run 'make clean' to clean up.
+$(TARGET): $(OBJS_PATHS) $(SRC_PATH)/main.c
+	$(CC) $(CFLAGS) $(SRC_PATH)/main.c $(OBJS_PATHS) $(LIBNL_INCLUDE) $(LIBNL_LIB) -o $(TOP_PATH)/$(TARGET)
+	@echo Build finished. Run \'make clean\' to clean up.
 
-mktmp:
-	-mkdir $(TMP_PATH)
-	-mkdir $(TMP_PATH)/initiator
-
-main.o: main.c
-	$(CC) -c -o $(TMP_PATH)/main.o $(LIBNL_INCLUDE) $(SRC_PATH)/main.c
-
-initiator.a:
+$(SRC_PATH)/initiator/initiator.o: $(wildcard $(SRC_PATH)/initiator/*.c) $(wildcard $(SRC_PATH)/initiator/*.h)
 	cd $(SRC_PATH)/initiator && $(MAKE)
 
-responder.o:
+$(SRC_PATH)/responder/responder.o: $(wildcard $(SRC_PATH)/responder/*.c) $(wildcard $(SRC_PATH)/responder/*.h)
 	cd $(SRC_PATH)/responder && $(MAKE)
 
-nl.o:
+$(SRC_PATH)/nl/nl.o: $(wildcard $(SRC_PATH)/nl/*.c) $(wildcard $(SRC_PATH)/nl/*.h)
 	cd $(SRC_PATH)/nl && $(MAKE)
 
 .PHONY: clean
 clean:
-	-rm -r $(TMP_PATH)
+	find . -name *.o -type f -exec rm -rf {} \;
