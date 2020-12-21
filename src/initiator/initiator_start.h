@@ -1,5 +1,5 @@
-#ifndef _FTM_H
-#define _FTM_H
+#ifndef _FTM_INITIATOR_START_H
+#define _FTM_INITIATOR_START_H
 
 #include "../nl/nl.h"
 #include "initiator_types.h"
@@ -10,7 +10,7 @@
  * The following section describes the API (and the only API needed) 
  * to start a fine timing measurement (FTM) and handle the results. 
  * Additional information of corresponding data types and methods to 
- * configure the request is provided in types.h.
+ * configure the request is provided in initiator_types.h.
  */
 
 /**
@@ -186,4 +186,4 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
                addr[4], addr[5]);                                  \
     }
 
-#endif /* _FTM_H */
+#endif /* _FTM_INITIATOR_START_H */

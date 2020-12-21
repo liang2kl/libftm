@@ -1,5 +1,5 @@
-#ifndef _FTM_CONFIG_H
-#define _FTM_CONFIG_H
+#ifndef _FTM_INITIATOR_CONFIG_H
+#define _FTM_INITIATOR_CONFIG_H
 
 #include "initiator.h"
 /**
@@ -23,7 +23,7 @@
  * @note
  * Each peer must take only one line, although the doc above seperates the 
  * attributes into different lines. Append more configuration options by 
- * modifing parse_config_file() in config.c.
+ * modifing parse_peer_config() in config.c.
  */
 
 /**
