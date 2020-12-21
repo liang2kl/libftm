@@ -16,7 +16,7 @@ enum nl80211_chan_width str_to_bw(const char *str) {
     return NL80211_CHAN_WIDTH_20_NOHT;
 }
 
-int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
+static int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
     unsigned char addr[6];
     int res, consumed;
     char *bw = NULL, *pos, *tmp, *save_ptr, *delims = " \t\n";

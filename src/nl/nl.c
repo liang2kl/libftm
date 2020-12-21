@@ -103,9 +103,8 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg) {
     return cb_arg;
 }
 
-int nl_handle_msg(struct nl80211_state *state, int type,
-                       struct nl_msg *msg, nl_recvmsg_msg_cb_t handler, 
-                       struct nl_cb_arg * arg) {
+int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
+                  nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg) {
     int err;
     struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
     if (!cb) {
@@ -123,13 +122,9 @@ int nl_handle_msg(struct nl80211_state *state, int type,
     if (arg)
         arg->state = &err;
 
-    if (type == NL_SEND_MSG) {
-        nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
-        nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
-        nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
-    } else if (type == NL_RECV_NO_SEQ_CHECK) {
-        nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-    }
+    nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
+    nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
+    nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
 
     if (handler)
         nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handler, arg);
@@ -138,10 +133,8 @@ int nl_handle_msg(struct nl80211_state *state, int type,
     
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
-    if (err == -1)
-        fprintf(stderr, "Permission denied!\n");
     if (err < 0) {
-        fprintf(stderr, "Received error code %d\n", err);
+        fprintf(stderr, "Command failed: %s (%d)\n", strerror(-err), err);
         return 1;
     }
     return 0;
