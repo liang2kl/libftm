@@ -75,6 +75,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
 }
 
 int my_start_ftm(int argc, char **argv) {
+    /* parse the arguments */
     if (argc != 4 && argc != 3) {
         printf("Invalid arguments!\n");
         printf("Valid args: <if_name> <file_path> [<attemps>]\n");
@@ -108,7 +109,7 @@ int my_start_ftm(int argc, char **argv) {
      */
     int err = ftm(config, custom_result_handler, attempts, stats);
     if (err)
-        printf("FTM measurement failed!\n");
+        fprintf(stderr, "FTM measurement failed!\n");
 
     /* clean up */
     for (int i = 0; i < config->peer_count; i++) {
@@ -116,5 +117,5 @@ int my_start_ftm(int argc, char **argv) {
     }
     free(stats);
     free_ftm_config(config);
-    return 0;
+    return err;
 }

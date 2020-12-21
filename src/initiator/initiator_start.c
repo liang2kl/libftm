@@ -146,26 +146,26 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         struct nlattr *data[NL80211_PMSR_TYPE_MAX + 1];
         struct nlattr *ftm[NL80211_PMSR_FTM_RESP_ATTR_MAX + 1];
 
-        err = nla_parse_nested(peer_tb, NL80211_PMSR_PEER_ATTR_MAX, peer, NULL);
+        err = nla_parse_nested(peer_tb, NL80211_PMSR_PEER_ATTR_MAX,
+                               peer, NULL);
         if (err) {
-            printf("Peer: failed to parse!\n");
+            fprintf(stderr, "Peer: failed to parse!\n");
             return 1;
         }
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_ADDR]) {
-            printf("Peer: no MAC address\n");
+            fprintf(stderr, "Peer: no MAC address\n");
             return 1;
         }
 
-
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_RESP]) {
-            printf("No response!\n");
+            fprintf(stderr, "No response!\n");
             return 1;
         }
 
         err = nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
                                peer_tb[NL80211_PMSR_PEER_ATTR_RESP], NULL);
         if (err) {
-            printf("Failed to parse response!\n");
+            fprintf(stderr, "Failed to parse response!\n");
             return 1;
         }
 
@@ -202,8 +202,10 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
             if (!found) {
                 fprintf(stderr,
                         "Result for target"
-                        "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx does not exist!\n",
-                        addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+                        "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx"
+                        "does not exist!\n",
+                        addr[0], addr[1], addr[2],
+                        addr[3], addr[4], addr[5]);
                 continue;
             }
         }

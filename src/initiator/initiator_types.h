@@ -1,5 +1,5 @@
-#ifndef _TYPES_H
-#define _TYPES_H
+#ifndef _FTM_INITIATOR_TYPES_H
+#define _FTM_INITIATOR_TYPES_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -60,6 +60,8 @@ enum ftm_peer_attr_flags {
  * other attrs: defined in @enum nl80211_peer_measurement_ftm_req
  * @flags: whether an attribute is set. Identifiers are defined 
  * in @enum ftm_peer_attr_flags.
+ * @rtt_correct: compensation of rtt, not a netlink attribute, just
+ * an extra attr we define
  * 
  * @note
  * Append additional attrs by adding members in
@@ -127,6 +129,8 @@ enum ftm_resp_attr_flags {
  * 
  * @mac_addr: mac address of the target 
  * other variables are defined in @enum nl80211_peer_measurement_ftm_resp
+ * @rtt_correct: compensation of rtt, not a netlink attribute, just
+ * an extra attr we define
  * 
  * @note
  * Append other attrs by adding members in @struct ftm_resp_attr (attr_name)
