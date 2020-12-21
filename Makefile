@@ -1,35 +1,49 @@
-VPATH = src:src/nl:src/initiator:src/responder
-OBJS = initiator.o responder.o nl.o
 TOP_PATH = $(shell pwd)
 SRC_PATH = $(TOP_PATH)/src
-TMP_PATH = $(TOP_PATH)/tmp
-OBJS_PATHS = $(foreach obj,$(OBJS),$(SRC_PATH)/$(basename $(obj))/$(obj))
 TARGET = ftm
+INSTALL_DIR = /usr/bin
 CC = gcc
+AR = ar
 MAKE = make
 CFLAGS = -g
 LIBNL_INCLUDE = -I /usr/include/libnl3
 LIBNL_LIB = -lnl-3 -lnl-genl-3
+OBJS = initiator.o responder.o nl.o
+OBJS_PATHS = $(foreach obj,$(OBJS),$(SRC_PATH)/$(basename $(obj))/$(obj))
 
-export VPATH LIBNL_INCLUDE SRC_PATH TOP_PATH TMP_PATH CC
+export LIBNL_INCLUDE CC AR
+
+define make_sub_rules
+$(SRC_PATH)/$(basename $(1))/$(1): \
+$(wildcard $(SRC_PATH)/$(basename $(1))/*.c) \
+$(wildcard $(SRC_PATH)/$(basename $(1))/*.h) 
+endef
+
+define make_sub_cmd
+cd $(SRC_PATH)/$(basename $(1)) && $(MAKE)
+endef
 
 $(TARGET): $(OBJS_PATHS) $(SRC_PATH)/main.c
-	$(CC) $(CFLAGS) $(SRC_PATH)/main.c $(OBJS_PATHS) $(LIBNL_INCLUDE) $(LIBNL_LIB) -o $(TOP_PATH)/$(TARGET)
-	@echo Build finished. Run \'make clean\' to clean up.
+	$(CC) $(CFLAGS) $(SRC_PATH)/main.c $(OBJS_PATHS) \
+	$(LIBNL_INCLUDE) $(LIBNL_LIB) -o $(TOP_PATH)/$(TARGET)
+	@echo
+	@echo Build finished.
 
-$(SRC_PATH)/initiator/initiator.o: $(wildcard $(SRC_PATH)/initiator/*.c) $(wildcard $(SRC_PATH)/initiator/*.h)
-	cd $(SRC_PATH)/initiator && $(MAKE)
+$(call make_sub_rules,initiator.o)
+	$(call make_sub_cmd,initiator.o)
 
-$(SRC_PATH)/responder/responder.o: $(wildcard $(SRC_PATH)/responder/*.c) $(wildcard $(SRC_PATH)/responder/*.h)
-	cd $(SRC_PATH)/responder && $(MAKE)
+$(call make_sub_rules,responder.o)
+	$(call make_sub_cmd,responder.o)
 
-$(SRC_PATH)/nl/nl.o: $(wildcard $(SRC_PATH)/nl/*.c) $(wildcard $(SRC_PATH)/nl/*.h)
-	cd $(SRC_PATH)/nl && $(MAKE)
+$(call make_sub_rules,nl.o)
+	$(call make_sub_cmd,nl.o)
 
 .PHONY: clean
 clean:
 	find . -name *.o -type f -exec rm -rf {} \;
 
-.PHONY: install
 install: $(TARGET)
-	mv -f $(TARGET) /usr/sbin
+	cp -f $< $(INSTALL_DIR)
+
+uninstall: $(INSTALL_DIR)/$(TARGET)
+	rm -f $<
