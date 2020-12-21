@@ -27,7 +27,7 @@ int ftm_start_responder(const char *if_name) {
         return 1;
     nla_put_flag(msg, NL80211_FTM_RESP_ATTR_ENABLED);
     nla_nest_end(msg, ftm);
-    err = nl_handle_msg(&nlstate, NL_SEND_MSG, msg, NULL, NULL);
+    err = nl_handle_msg(&nlstate, msg, NULL, NULL);
     return err;
 nla_put_failure:
     nlmsg_free(msg);
