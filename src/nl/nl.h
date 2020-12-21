@@ -16,9 +16,14 @@ struct nl80211_state {
     int nl80211_id;
 };
 
+/**
+ * nl80211_init - Initialize socket and nl80211 identifier
+ * 
+ * @param state   nl80211_state pointer to be filled
+ * 
+ * @return 0 on success, 1 on failure
+ */
 int nl80211_init(struct nl80211_state *state);
-
-enum nl_send_msg_option { NL_SEND_MSG, NL_RECV_NO_SEQ_CHECK };
 
 /**
  * struct nl_cb_arg - Argument pass to the callback
@@ -47,7 +52,6 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg);
  * nl_handle_msg - Start receiving or sending netlink message
  * 
  * @param state     nl80211_state instance created by nl80211_init()
- * @param type      Handle option defined in nl_send_msg_option
  * @param msg       Netlink message to be sent, can be NULL if you don't need
  *                  to send any message.
  * @param handler   Callback to handle results. Can be NULL.
@@ -55,6 +59,6 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg);
  * 
  * @return 0 on success, 1 on failure
  */
-int nl_handle_msg(struct nl80211_state *state, int type, struct nl_msg *msg,
+int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
                   nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg);
 #endif
