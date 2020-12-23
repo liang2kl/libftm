@@ -90,8 +90,8 @@ static int start_ftm(struct nl80211_state *state,
     err = set_ftm_config(msg, config);
     if (err)
         return 1;
-    nl_handle_msg(state, msg, NULL, NULL);
-    return 0;
+    err = nl_handle_msg(state, msg, NULL, NULL);
+    return err;
 nla_put_failure:
     nlmsg_free(msg);
     return 1;

@@ -106,7 +106,7 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg) {
 int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
                   nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg) {
     int err;
-    struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
+    struct nl_cb *cb = nl_cb_alloc(NL_CB_CUSTOM);
     if (!cb) {
         fprintf(stderr, "Fail to allocate callback\n");
         return 1;
@@ -117,11 +117,12 @@ int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
         if (err < 0)
             return 1;
     }
-
+    
     err = 1;
     if (arg)
         arg->state = &err;
 
+    nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, valid_handler, NULL);
     nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
     nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
     nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);

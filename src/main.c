@@ -24,7 +24,6 @@ int main(int argc, char **argv) {
         argv++;
         int err = my_start_ftm(argc, argv);
         if (err) {
-            printf("Fail to start ftm responder!\n");
             return 1;
         }
     } else {
