@@ -1,5 +1,7 @@
 # WIFI FTM Tool
 
+*当前版本存在问题，请使用 [d002f7f](https://github.com/liang2kl/wifi-ftm/tree/d002f7f1f4c730242552f93c784de28c19b210ea)*
+
 ## 环境配置
 
 ### 系统要求
