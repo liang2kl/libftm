@@ -1,7 +1,7 @@
 TOP_PATH = $(shell pwd)
 SRC_PATH = $(TOP_PATH)/src
 TARGET = ftm
-INSTALL_DIR = /usr/bin
+INSTALL_DIR = /usr/sbin
 CC = gcc
 AR = ar
 MAKE = make
