@@ -36,10 +36,10 @@ sudo rm /lib/x86_64-linux-gnu/libnl-genl-3.so.200.26.0
 
 ## 使用
 
-### 克隆主分支
+### 克隆
 
 ```
-git clone https://github.com/liang2kl/wifi-ftm.git main
+git clone https://github.com/liang2kl/wifi-ftm.git
 ```
 
 ### 编译与安装
