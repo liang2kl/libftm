@@ -103,8 +103,8 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg) {
     return cb_arg;
 }
 
-int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
-                  nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg) {
+int nl_sock_handle(struct nl80211_state *state, struct nl_msg *msg,
+                   nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg) {
     int err;
     struct nl_cb *cb = nl_cb_alloc(NL_CB_CUSTOM);
     if (!cb) {

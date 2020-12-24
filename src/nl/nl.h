@@ -49,7 +49,7 @@ struct nl_cb_arg {
 struct nl_cb_arg alloc_nl_cb_arg(void *arg);
 
 /**
- * nl_handle_msg - Start receiving or sending netlink message
+ * nl_sock_handle - Start receiving or sending netlink message
  * 
  * @param state     nl80211_state instance created by nl80211_init()
  * @param msg       Netlink message to be sent, can be NULL if you don't need
@@ -59,6 +59,6 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg);
  * 
  * @return 0 on success, 1 on failure
  */
-int nl_handle_msg(struct nl80211_state *state, struct nl_msg *msg,
-                  nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg);
+int nl_sock_handle(struct nl80211_state *state, struct nl_msg *msg,
+                   nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg);
 #endif
