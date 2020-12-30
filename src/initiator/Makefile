@@ -1,11 +1,8 @@
-INITIATOR_SUFFIX = start config types
-INITIATOR_OBJS = $(patsubst %,initiator_%.o,$(INITIATOR_SUFFIX))
+INITIATOR_SUFFIX = initiator start config types
+INITIATOR_OBJS = $(patsubst %,initiator_%.o,$(filter-out initiator $(INITIATOR_SUFFIX))) + initiator.o
 
-initiator.o: initiator_temp.o $(INITIATOR_OBJS)
-	$(AR) rc initiator.o $^
+initiator.o: $(INITIATOR_OBJS)
+	$(AR) rc initiator.a $^
 
 $(INITIATOR_OBJS): %.o: %.c %.h
 	$(CC) -c $(LIBNL_INCLUDE) $< -o $@
-
-initiator_temp.o: initiator.c initiator.h
-	$(CC) -c $(LIBNL_INCLUDE) initiator.c -o initiator_temp.o

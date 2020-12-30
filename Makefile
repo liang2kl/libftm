@@ -8,7 +8,7 @@ MAKE = make
 CFLAGS = -g
 LIBNL_INCLUDE = -I /usr/include/libnl3
 LIBNL_LIB = -lnl-3 -lnl-genl-3
-OBJS = initiator.o responder.o nl.o
+OBJS = initiator.a responder.o nl.o
 OBJS_PATHS = $(foreach obj,$(OBJS),$(SRC_PATH)/$(basename $(obj))/$(obj))
 
 export LIBNL_INCLUDE CC AR
@@ -40,7 +40,7 @@ $(call make_sub_rules,nl.o)
 
 .PHONY: clean
 clean:
-	find . -name *.o -type f -exec rm -rf {} \;
+	find . -name *.o -or -name *.a -type f -exec rm -rf {} \;
 
 install: $(TARGET)
 	cp -f $< $(INSTALL_DIR)
