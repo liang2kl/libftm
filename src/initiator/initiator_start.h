@@ -26,7 +26,9 @@
  * a pointer to it.
  */
 typedef void (*ftm_result_handler)(struct ftm_results_wrap *results,
-                                   uint attempts, uint attempt_idx, void *arg);
+                                   int attempts, int attempt_idx, void *arg);
+
+#define FTM_ATTEMPTS_INF -1
 
 /**
  * ftm - Start FTM with given config, receive response with given
@@ -34,7 +36,8 @@ typedef void (*ftm_result_handler)(struct ftm_results_wrap *results,
  * 
  * @param config    The config used to start FTM
  * @param handler   The callback to handle measurement results, can be NULL
- * @param attempts  How many times to measure distance
+ * @param attempts  How many times to measure distance. Use FTM_ATTEMPTS_INF
+ *                  to continuously measure until exit with ctrl+C.
  * @param arg       Any pointer you want to pass to the handler
  * 
  * @return 0 on success, 1 on failure

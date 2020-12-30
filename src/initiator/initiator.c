@@ -4,7 +4,7 @@
 #define RTT_TO_DIST(rtt) ((float)rtt * SOL / 1000000000000)
 
 static void custom_result_handler(struct ftm_results_wrap *results,
-                                  uint attempts, uint attempt_idx, void *arg) {
+                                  int attempts, int attempt_idx, void *arg) {
     struct ftm_results_stat **stats = arg;
     uint line_count = 0;
     for (int i = 0; i < results->count; i++) {

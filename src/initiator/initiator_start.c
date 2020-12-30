@@ -285,7 +285,7 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
         return 1;
     }
 
-    for (int i = 0; i < attempts; i++) {
+    for (long long i = 0; i < attempts; i++) {
         struct ftm_results_wrap *results_wrap =
             alloc_ftm_results_wrap(config);
 
