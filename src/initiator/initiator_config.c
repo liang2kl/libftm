@@ -67,7 +67,7 @@ static int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
             preamble = true;
         } else if (strncmp(pos, "bw=", 3) == 0) {
             bw = pos + 3;
-            FTM_PEER_SET_ATTR(attr, center_freq, str_to_bw(bw));
+            FTM_PEER_SET_ATTR(attr, chan_width, str_to_bw(bw));
         } else {
             printf("Unknown parameter %s\n", pos);
             return 1;
