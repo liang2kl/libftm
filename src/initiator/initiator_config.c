@@ -1,7 +1,7 @@
 #include "initiator_config.h"
 enum nl80211_chan_width str_to_bw(const char *str) {
 #define BW_FROM_STR(des)                 \
-    if (strcasecmp(str, #des)) {         \
+    if (strcasecmp(str, #des) == 0) {    \
         return NL80211_CHAN_WIDTH_##des; \
     }
     BW_FROM_STR(5);
