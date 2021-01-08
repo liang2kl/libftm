@@ -13,13 +13,6 @@ struct ftm_ap_attrs_wrap {
     int count;
 };
 
-struct ftm_ap_attrs_wrap *alloc_ap_attrs_wrap() {
-    struct ftm_ap_attrs_wrap *wrap = malloc(sizeof(struct ftm_ap_attrs_wrap));
-    wrap->attrs = NULL;
-    wrap->count = 0;
-    return wrap;
-}
-
 typedef int (*ftm_ap_scan_handler_t)(struct ftm_ap_attr **attrs);
 
 int scan_ap(ftm_ap_scan_handler_t handler, const char* if_name);

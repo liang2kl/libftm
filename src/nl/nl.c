@@ -149,12 +149,12 @@ struct nl_msg *init_nl_msg_with_if(const char *if_name, int nl80211_id) {
     }
     if (!if_name) {
         fprintf(stderr, "No interface name provided!\n");
-        return 1;
+        return NULL;
     }
     int if_idx = if_nametoindex(if_name);
     if (!if_idx) {
         fprintf(stderr, "Fail to find device interface %s!\n", if_name);
-        return 1;
+        return NULL;
     }
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_idx);
 
