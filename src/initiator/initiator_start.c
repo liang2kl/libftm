@@ -317,19 +317,28 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
         fprintf(stderr, "Fail to allocate socket!\n");
         return 1;
     }
-#define __TEST_ATTR(name, min_val, max_val)                 \
-    do {                                                    \
-        printf("\n\n\nTESTING ARGUMENT " #name "\n\n"); \
-        for (int __i = min_val; __i <= max_val; __i++) {    \
-            config->peers[0]->name = __i;                   \
-            printf("\n" #name " = %d\n", __i);                \
-            ftm_test(&nlstate, config, handler, attempts, arg);       \
-        }                                                   \
+    struct ftm_config *config_copy = malloc(sizeof(struct ftm_config));
+    memcpy(config_copy, config, sizeof(struct ftm_config));
+    struct ftm_peer_attr *attr_copy = malloc(sizeof(struct ftm_peer_attr));
+    memcpy(attr_copy, config->peers[0], sizeof(struct ftm_peer_attr));
+    attr_copy->ftms_per_burst = 7;
+
+#define __TEST_ATTR(name, min_val, max_val)                                    \
+    do {                                                                       \
+        printf("\n\n\nTESTING ARGUMENT " #name "\n\n");                        \
+        for (int __i = min_val; __i <= max_val; __i++) {                       \
+            memcpy(config->peers[0], attr_copy, sizeof(struct ftm_peer_attr)); \
+            config->peers[0]->name = __i;                                      \
+            config->peers[0]->flags[FTM_PEER_FLAG_##name] = 1;                 \
+            printf("\n" #name " = %d\n", __i);                                 \
+            ftm_test(&nlstate, config, handler, attempts, arg);                \
+        }                                                                      \
     } while (0)
 
     __TEST_ATTR(num_bursts_exp, 0, 15);
     __TEST_ATTR(burst_period, 0, 20);
-    __TEST_ATTR(ftms_per_burst, 0, 31);
+    __TEST_ATTR(burst_duration, 2, 11);
+    __TEST_ATTR(ftms_per_burst, 0, 15);
     __TEST_ATTR(num_ftmr_retries, 0, 31);
 
     return 0;
