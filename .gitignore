@@ -63,3 +63,4 @@ ftm
 ftm_config
 !config/
 config
+*.txt

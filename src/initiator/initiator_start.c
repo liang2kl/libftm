@@ -277,26 +277,20 @@ static void print_ftm_results(struct ftm_results_wrap *results,
     }
 }
 
-int ftm(struct ftm_config *config, ftm_result_handler handler,
-        int attempts, void *arg) {
-    struct nl80211_state nlstate;
-    int err = nl80211_init(&nlstate);
-    if (err) {
-        fprintf(stderr, "Fail to allocate socket!\n");
-        return 1;
-    }
-
+int ftm_test(struct nl80211_state *state, struct ftm_config *config, ftm_result_handler handler,
+             int attempts, void *arg) {
+    int err;
     for (long long i = 0; i < attempts; i++) {
         struct ftm_results_wrap *results_wrap =
             alloc_ftm_results_wrap(config);
 
-        err = start_ftm(&nlstate, config);
+        err = start_ftm(state, config);
         if (err) {
             fprintf(stderr, "Fail to start ftm!\n");
             goto handle_free;
         }
 
-        err = listen_ftm_result(&nlstate, results_wrap);
+        err = listen_ftm_result(state, results_wrap);
         if (err) {
             fprintf(stderr, "Fail to listen!\n");
             goto handle_free;
@@ -313,5 +307,30 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
         free_ftm_results_wrap(results_wrap);
         return 1;
     }
+}
+
+int ftm(struct ftm_config *config, ftm_result_handler handler,
+        int attempts, void *arg) {
+    struct nl80211_state nlstate;
+    int err = nl80211_init(&nlstate);
+    if (err) {
+        fprintf(stderr, "Fail to allocate socket!\n");
+        return 1;
+    }
+#define __TEST_ATTR(name, min_val, max_val)                 \
+    do {                                                    \
+        printf("\n\n\nTESTING ARGUMENT " #name "\n\n"); \
+        for (int __i = min_val; __i <= max_val; __i++) {    \
+            config->peers[0]->name = __i;                   \
+            printf("\n" #name " = %d\n", __i);                \
+            ftm_test(&nlstate, config, handler, attempts, arg);       \
+        }                                                   \
+    } while (0)
+
+    __TEST_ATTR(num_bursts_exp, 0, 15);
+    __TEST_ATTR(burst_period, 0, 20);
+    __TEST_ATTR(ftms_per_burst, 0, 31);
+    __TEST_ATTR(num_ftmr_retries, 0, 31);
+
     return 0;
 }

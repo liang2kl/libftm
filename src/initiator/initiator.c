@@ -12,7 +12,9 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             return;
         }
         if (results->results[i]->flags[FTM_RESP_FLAG_rtt_avg]) {
-            printf("%f\n", RTT_TO_DIST(results->results[i]->rtt_avg));
+            printf("%.2f\n", RTT_TO_DIST(results->results[i]->rtt_avg));
+        } else {
+            printf("NULL\n");
         }
     }
 }
