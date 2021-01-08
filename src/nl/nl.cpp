@@ -2,11 +2,11 @@
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
                          void *arg) {
-    struct nlmsghdr *nlh = (struct nlmsghdr *)err - 1;
+    struct nlmsghdr *nlh = (struct nlmsghdr *) err - 1;
     int len = nlh->nlmsg_len;
     struct nlattr *attrs;
     struct nlattr *tb[3 + 1];
-    int *ret = arg;
+    int *ret = (int *) arg;
     int ack_len = sizeof(*nlh) + sizeof(int) + sizeof(*nlh);
 
     if (err->error > 0) {
@@ -27,15 +27,15 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
     if (len <= ack_len)
         return NL_STOP;
 
-    attrs = (void *)((unsigned char *)nlh + ack_len);
+    attrs = (nlattr *) ((unsigned char *) nlh + ack_len);
     len -= ack_len;
 
     nla_parse(tb, 3, attrs, len, NULL);
     if (tb[1]) {
-        len = strnlen((char *)nla_data(tb[1]),
+        len = strnlen((char *) nla_data(tb[1]),
                       nla_len(tb[1]));
         fprintf(stderr, "kernel reports: %*s\n", len,
-                (char *)nla_data(tb[1]));
+                (char *) nla_data(tb[1]));
     }
 
     return NL_STOP;
@@ -46,13 +46,13 @@ int valid_handler(struct nl_msg *msg, void *arg) {
 }
 
 static int finish_handler(struct nl_msg *msg, void *arg) {
-    int *ret = arg;
+    int *ret = (int *) arg;
     *ret = 0;
     return NL_SKIP;
 }
 
 static int ack_handler(struct nl_msg *msg, void *arg) {
-    int *ret = arg;
+    int *ret = (int *) arg;
     *ret = 0;
     return NL_STOP;
 }
@@ -93,7 +93,7 @@ int nl80211_init(struct nl80211_state *state) {  // from iw
 
     return 0;
 
-out_handle_destroy:
+    out_handle_destroy:
     nl_socket_free(state->nl_sock);
     return err;
 }
@@ -117,7 +117,7 @@ int nl_sock_handle(struct nl80211_state *state, struct nl_msg *msg,
         if (err < 0)
             return 1;
     }
-    
+
     err = 1;
     if (arg)
         arg->state = &err;
@@ -131,7 +131,7 @@ int nl_sock_handle(struct nl80211_state *state, struct nl_msg *msg,
         nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, handler, arg);
     else
         nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, NULL);
-    
+
     while (err > 0)
         nl_recvmsgs(state->nl_sock, cb);
     if (err < 0) {

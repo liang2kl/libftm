@@ -1,7 +1,9 @@
 #include "initiator_start.h"
+#include <chrono>
 
 static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
+    struct nlattr *chan;
     if (!peer)
         goto nla_put_failure;
     if (!attr->mac_addr) {
@@ -41,7 +43,7 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     nla_nest_end(msg, req_data);
     nla_nest_end(msg, req);
 
-    struct nlattr *chan = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_CHAN);
+    chan = nla_nest_start(msg, NL80211_PMSR_PEER_ATTR_CHAN);
     if (!chan)
         goto nla_put_failure;
 
@@ -49,10 +51,11 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
     __FTM_PUT(NL80211_ATTR_, WIPHY_FREQ, center_freq, U32);
     __FTM_PUT(NL80211_ATTR_, CENTER_FREQ1, center_freq_1, U32);
     __FTM_PUT(NL80211_ATTR_, CENTER_FREQ2, center_freq_2, U32);
+
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
     return 0;
-nla_put_failure:
+    nla_put_failure:
     fprintf(stderr, "put failed!\n");
     return -1;
 }
@@ -85,7 +88,7 @@ static int start_ftm(struct nl80211_state *state,
 
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
-    
+
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, config->interface_index);
 
     err = set_ftm_config(msg, config);
@@ -93,16 +96,16 @@ static int start_ftm(struct nl80211_state *state,
         return 1;
     err = nl_sock_handle(state, msg, NULL, NULL);
     return err;
-nla_put_failure:
+    nla_put_failure:
     nlmsg_free(msg);
     return 1;
 }
 
 static int handle_ftm_result(struct nl_msg *msg, void *arg) {
-    struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+    struct genlmsghdr *gnlh = (genlmsghdr *) nlmsg_data(nlmsg_hdr(msg));
     /* fetch pointer from nl_cb_arg */
-    struct nl_cb_arg *cb_arg = arg;
-    struct ftm_results_wrap *results_wrap = cb_arg->arg;
+    struct nl_cb_arg *cb_arg = (nl_cb_arg *) arg;
+    struct ftm_results_wrap *results_wrap = (ftm_results_wrap *) cb_arg->arg;
     if (gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_COMPLETE) {
         *cb_arg->state = 0;
         return -1;
@@ -117,14 +120,14 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
               genlmsg_attrlen(gnlh, 0), NULL);
 
     if (!tb[NL80211_ATTR_COOKIE]) {
-		printf("Peer measurements: no cookie!\n");
-		return -1;
-	}
+        printf("Peer measurements: no cookie!\n");
+        return -1;
+    }
 
     if (!tb[NL80211_ATTR_PEER_MEASUREMENTS]) {
-		printf("Peer measurements: no measurement data!\n");
-		return -1;
-	}
+        printf("Peer measurements: no measurement data!\n");
+        return -1;
+    }
 
     struct nlattr *pmsr[NL80211_PMSR_ATTR_MAX + 1];
     err = nla_parse_nested(pmsr, NL80211_PMSR_ATTR_MAX,
@@ -171,7 +174,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
         }
 
         err = nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
-                               resp[NL80211_PMSR_RESP_ATTR_DATA], 
+                               resp[NL80211_PMSR_RESP_ATTR_DATA],
                                NULL);
         if (err)
             return 1;
@@ -180,7 +183,7 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
                                data[NL80211_PMSR_TYPE_FTM], NULL);
         if (err)
             return 1;
-        
+
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
 
         /* 
@@ -244,7 +247,7 @@ static int listen_ftm_result(struct nl80211_state *state,
     return err;
 }
 
-static void print_ftm_results(struct ftm_results_wrap *results, 
+static void print_ftm_results(struct ftm_results_wrap *results,
                               uint attempts, uint attemp_idx, void *arg) {
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
@@ -285,33 +288,43 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
         fprintf(stderr, "Fail to allocate socket!\n");
         return 1;
     }
+    double duration;
+    for (int j = 0; j < 32; j++) {
+        printf("ftms_per_burst=%d\n", j);
+        for (long long i = 0; i < attempts; i++) {
 
-    for (long long i = 0; i < attempts; i++) {
-        struct ftm_results_wrap *results_wrap =
-            alloc_ftm_results_wrap(config);
+            auto start = std::chrono::system_clock::now();
 
-        err = start_ftm(&nlstate, config);
-        if (err) {
-            fprintf(stderr, "Fail to start ftm!\n");
-            goto handle_free;
+            struct ftm_results_wrap *results_wrap =
+                    alloc_ftm_results_wrap(config);
+
+            config->peers[0]->ftms_per_burst =            config->peers[0]->num_bursts_exp = 2;
+            err = start_ftm(&nlstate, config);
+            if (err) {
+                fprintf(stderr, "Fail to start ftm!\n");
+//                goto handle_free;
+            }
+
+            err = listen_ftm_result(&nlstate, results_wrap);
+            if (err) {
+                fprintf(stderr, "Fail to listen!\n");
+//                goto handle_free;
+            }
+            auto end = std::chrono::system_clock::now();
+            auto duration = duration_cast<std::chrono::microseconds>(end - start);
+            double duration_ms = double(duration.count()) * std::chrono::microseconds::period::num /
+                                 std::chrono::microseconds::period::den;
+//            if (handler)
+//                handler(results_wrap, attempts, i, arg);
+//            else
+//                print_ftm_results(results_wrap, attempts, i, NULL);
+            printf("%ld %fs\n", results_wrap->results[0]->rtt_avg, duration_ms);
+            free_ftm_results_wrap(results_wrap);
+            continue;
+            handle_free:
+            free_ftm_results_wrap(results_wrap);
+            return 1;
         }
-
-        err = listen_ftm_result(&nlstate, results_wrap);
-        if (err) {
-            fprintf(stderr, "Fail to listen!\n");
-            goto handle_free;
-        }
-
-        if (handler)
-            handler(results_wrap, attempts, i, arg);
-        else
-            print_ftm_results(results_wrap, attempts, i, NULL);
-
-        free_ftm_results_wrap(results_wrap);
-        continue;
-    handle_free:
-        free_ftm_results_wrap(results_wrap);
-        return 1;
     }
     return 0;
 }

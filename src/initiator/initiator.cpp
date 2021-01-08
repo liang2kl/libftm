@@ -5,6 +5,7 @@
 
 static void custom_result_handler(struct ftm_results_wrap *results,
                                   int attempts, int attempt_idx, void *arg) {
+    printf("\n #%d\n", attempt_idx);
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {

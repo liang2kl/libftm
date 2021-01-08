@@ -1,4 +1,5 @@
 #include "initiator_config.h"
+
 enum nl80211_chan_width str_to_bw(const char *str) {
 #define BW_FROM_STR(des)                 \
     if (strcasecmp(str, #des) == 0) {    \
@@ -99,7 +100,7 @@ static int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
         FTM_PEER_SET_ATTR(attr, preamble, preamble);
     }
     return 0;
-return_err:
+    return_err:
     return 1;
 }
 
@@ -113,7 +114,7 @@ struct ftm_config *parse_config_file(const char *file_name,
     /* placeholder here */
     unsigned int max_peer_count = 16;
     struct ftm_peer_attr **peers =
-        malloc(max_peer_count * sizeof(struct ftm_peer_attr *));
+            (ftm_peer_attr **) malloc(max_peer_count * sizeof(struct ftm_peer_attr *));
 
     char line[255];
     int line_num;
@@ -137,7 +138,7 @@ struct ftm_config *parse_config_file(const char *file_name,
         fprintf(stderr, "Fail to allocate config!\n");
     }
     return config;
-return_err:
+    return_err:
     fclose(file);
     return NULL;
 }
