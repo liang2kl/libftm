@@ -47,7 +47,8 @@ static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int inde
 
     __FTM_PUT(NL80211_ATTR_, CHANNEL_WIDTH, chan_width, U32);
     __FTM_PUT(NL80211_ATTR_, WIPHY_FREQ, center_freq, U32);
-
+    __FTM_PUT(NL80211_ATTR_, CENTER_FREQ1, center_freq_1, U32);
+    __FTM_PUT(NL80211_ATTR_, CENTER_FREQ2, center_freq_2, U32);
     nla_nest_end(msg, chan);
     nla_nest_end(msg, peer);
     return 0;
