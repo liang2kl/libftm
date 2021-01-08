@@ -61,4 +61,6 @@ struct nl_cb_arg alloc_nl_cb_arg(void *arg);
  */
 int nl_sock_handle(struct nl80211_state *state, struct nl_msg *msg,
                    nl_recvmsg_msg_cb_t handler, struct nl_cb_arg *arg);
+
+struct nl_msg *init_nl_msg_with_if(const char *if_name, int nl80211_id);
 #endif
