@@ -1,12 +1,13 @@
 #include "initiator.h"
 
 #define SOL 299492458
-#define RTT_TO_DIST(rtt) ((float)rtt * SOL / 1000000000000)
+#define RTT_TO_DIST(rtt) ((float)(rtt) * SOL / 1000000000000)
+#define RELATIVE_DIFF(ori, new) (abs((float)(new - ori) / ori))
 
 static void custom_result_handler(struct ftm_results_wrap *results,
                                   int attempts, int attempt_idx, void *arg) {
     struct ftm_results_stat **stats = arg;
-    uint line_count = 0;
+    int line_count = 0;
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {
@@ -14,9 +15,15 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             return;
         }
 
-        if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
-            stats[i]->rtt_avg_stat += resp->rtt_avg;
-            stats[i]->rtt_measure_count++;
+        if (resp->flags[FTM_RESP_FLAG_rtt_avg] && resp->rtt_avg) {
+            const int threshold = 20;
+            float rate = stats[i]->rtt_measure_count > threshold ? 0.1 : 0.3;
+            if (stats[i]->rtt_measure_count <= 10 ||
+                RELATIVE_DIFF(((float)stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count),
+                              resp->rtt_avg) <= rate) {
+                stats[i]->rtt_avg_stat += resp->rtt_avg;
+                stats[i]->rtt_measure_count++;
+            }
         }
 
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
@@ -31,7 +38,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         line_count++;
         __FTM_PRINT(fail_reason, u);
         __FTM_PRINT(burst_index, u);
-        __FTM_PRINT(num_ftmr_attemps, u);
+        __FTM_PRINT(num_ftmr_attempts, u);
         __FTM_PRINT(num_ftmr_successes, u);
         __FTM_PRINT(busy_retry_time, u);
         __FTM_PRINT(num_bursts_exp, u);
@@ -46,23 +53,38 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         __FTM_PRINT(dist_variance, lu);
         __FTM_PRINT(dist_spread, lu);
 
+        printf("\n----Processed data----\n");
+        float dist = 0;
+        float corrected_dist = 0;
+        if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
+            dist = RTT_TO_DIST(resp->rtt_avg);
+            if (resp->flags[FTM_RESP_FLAG_rtt_correct]) {
+                corrected_dist = RTT_TO_DIST(resp->rtt_avg + resp->rtt_correct);
+            }
+        }
+        printf("%-19s%.3f\n", "dist", dist);
+        line_count += 3;
         if (stats[i]->rtt_measure_count) {
             int64_t rtt =
                 stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count;
-            printf("\n%-19s%ld\n", "rtt_avg_avg", rtt);
-            printf("%-19s%-7.3f%s\n", "dist_avg_avg", RTT_TO_DIST(rtt), "m");
-            line_count += 3;
+            printf("%-19s%ld\n", "rtt_avg", rtt);
+            printf("%-19s%-7.3f\n", "dist_avg", RTT_TO_DIST(rtt));
+            line_count += 2;
         }
-
+        
+        if (resp->flags[FTM_RESP_FLAG_rtt_correct]) {
+            printf("%-19s%.3f\n", "corrected_dist", corrected_dist);
+            line_count++;
+        }
         if (resp->flags[FTM_RESP_FLAG_rtt_correct] &&
             stats[i]->rtt_measure_count) {
             int64_t corrected_rtt =
                 stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count +
                 resp->rtt_correct;
-            printf("\n%-19s%ld\n", "corrected_rtt", corrected_rtt);
-            printf("%-19s%-7.3f%s\n", "corrected_dist",
-                   RTT_TO_DIST(corrected_rtt), "m");
-            line_count += 3;
+            printf("%-19s%ld\n", "corrected_rtt_avg", corrected_rtt);
+            printf("%-19s%-7.3f\n", "corrected_dist_avg",
+                   RTT_TO_DIST(corrected_rtt));
+            line_count += 2;
         }
     }
     if (attempt_idx == attempts - 1)
@@ -93,7 +115,7 @@ int my_start_ftm(int argc, char **argv) {
         fprintf(stderr, "Fail to parse config!\n");
         return 1;
     }
-
+    print_config(config);
     /* initialize our data */
     struct ftm_results_stat **stats =
         malloc(config->peer_count * sizeof(struct ftm_results_stat *));

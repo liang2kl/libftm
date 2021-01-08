@@ -103,7 +103,7 @@ enum ftm_resp_attr_flags {
     FTM_RESP_FLAG_mac_addr,
     FTM_RESP_FLAG_fail_reason,
     FTM_RESP_FLAG_burst_index,
-    FTM_RESP_FLAG_num_ftmr_attemps,
+    FTM_RESP_FLAG_num_ftmr_attempts,
     FTM_RESP_FLAG_num_ftmr_successes,
     FTM_RESP_FLAG_busy_retry_time,
     FTM_RESP_FLAG_num_bursts_exp,
@@ -141,7 +141,7 @@ struct ftm_resp_attr {
     uint8_t mac_addr[6];
     uint32_t fail_reason;
     uint32_t burst_index;
-    uint32_t num_ftmr_attemps;
+    uint32_t num_ftmr_attempts;
     uint32_t num_ftmr_successes;
     uint32_t busy_retry_time;
     uint8_t num_bursts_exp;

@@ -1,7 +1,9 @@
 #ifndef _FTM_INITIATOR_CONFIG_H
 #define _FTM_INITIATOR_CONFIG_H
 
-#include "initiator.h"
+#include "initiator_types.h"
+#include <stdio.h>
+#include "../nl/nl.h"
 /**
  * DOC: Format of ftm config file
  * 
@@ -36,4 +38,16 @@
  */
 struct ftm_config *parse_config_file(const char *file_name,
                                      const char *if_name);
+
+#define CONFIG_PRINT(peer, name, spec)         \
+    do {                                         \
+        printf("%-19s", #name);                  \
+        if (peer->flags[FTM_PEER_FLAG_##name]) { \
+            printf("%" #spec "\n", peer->name);  \
+        } else {                                 \
+            printf("default\n");                 \
+        }                                        \
+    } while (0)
+
+void print_config(struct ftm_config *config);
 #endif /*_FTM_CONFIG_H*/

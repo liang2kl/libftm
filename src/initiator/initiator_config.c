@@ -141,3 +141,33 @@ return_err:
     fclose(file);
     return NULL;
 }
+
+void print_config(struct ftm_config *config) {
+    if (config->peer_count == 0) {
+        printf("Config: no configured peers\n");
+        return;
+    }
+    printf("----CONFIG----\n");
+    printf("peer count: %d\n", config->peer_count);
+
+    for (int i = 0; i < config->peer_count; i++) {
+        struct ftm_peer_attr *peer = config->peers[i];
+        printf("\nTarget #%d - %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
+               i + 1, peer->mac_addr[0], peer->mac_addr[1], peer->mac_addr[2], peer->mac_addr[3],
+               peer->mac_addr[4], peer->mac_addr[5]);
+        CONFIG_PRINT(peer, chan_width, u);
+        CONFIG_PRINT(peer, center_freq, u);
+        CONFIG_PRINT(peer, center_freq_1, u);
+        CONFIG_PRINT(peer, center_freq_2, u);
+        CONFIG_PRINT(peer, asap, d);
+        CONFIG_PRINT(peer, preamble, u);
+        CONFIG_PRINT(peer, num_bursts_exp, u);
+        CONFIG_PRINT(peer, burst_period, u);
+        CONFIG_PRINT(peer, burst_duration, d);
+        CONFIG_PRINT(peer, ftms_per_burst, d);
+        CONFIG_PRINT(peer, num_ftmr_retries, u);
+        CONFIG_PRINT(peer, trigger_based, u);
+        CONFIG_PRINT(peer, rtt_correct, ld);
+    }
+    printf("\n--------------\n");
+}
