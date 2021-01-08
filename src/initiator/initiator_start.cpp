@@ -1,5 +1,6 @@
 #include "initiator_start.h"
 #include <chrono>
+#include <iostream>
 
 static int set_ftm_peer(struct nl_msg *msg, struct ftm_peer_attr *attr, int index) {
     struct nlattr *peer = nla_nest_start(msg, index);
@@ -280,6 +281,105 @@ static void print_ftm_results(struct ftm_results_wrap *results,
     }
 }
 
+//int ftm(struct ftm_config *config, ftm_result_handler handler,
+//        int attempts, void *arg) {
+//    struct nl80211_state nlstate;
+//    int err = nl80211_init(&nlstate);
+//    if (err) {
+//        fprintf(stderr, "Fail to allocate socket!\n");
+//        return 1;
+//    }
+//    double duration;
+//    for (int j = 0; j < 32; j++) {
+//        printf("ftms_per_burst=%d\n", j);
+//        for (long long i = 0; i < attempts; i++) {
+//
+//            auto start = std::chrono::system_clock::now();
+//
+//            struct ftm_results_wrap *results_wrap =
+//                    alloc_ftm_results_wrap(config);
+//
+//            config->peers[0]->ftms_per_burst =            config->peers[0]->num_bursts_exp = 2;
+//            err = start_ftm(&nlstate, config);
+//            if (err) {
+//                fprintf(stderr, "Fail to start ftm!\n");
+////                goto handle_free;
+//            }
+//
+//            err = listen_ftm_result(&nlstate, results_wrap);
+//            if (err) {
+//                fprintf(stderr, "Fail to listen!\n");
+////                goto handle_free;
+//            }
+//            auto end = std::chrono::system_clock::now();
+//            auto duration = duration_cast<std::chrono::microseconds>(end - start);
+//            double duration_ms = double(duration.count()) * std::chrono::microseconds::period::num /
+//                                 std::chrono::microseconds::period::den;
+////            if (handler)
+////                handler(results_wrap, attempts, i, arg);
+////            else
+////                print_ftm_results(results_wrap, attempts, i, NULL);
+//            printf("%ld %fs\n", results_wrap->results[0]->rtt_avg, duration_ms);
+//            free_ftm_results_wrap(results_wrap);
+//            continue;
+//            handle_free:
+//            free_ftm_results_wrap(results_wrap);
+//            return 1;
+//        }
+//    }
+//    return 0;
+//}
+
+int ftm_test(struct nl80211_state *state, struct ftm_config *config, ftm_result_handler handler,
+             int attempts, void *arg) {
+    int err;
+    using namespace std::chrono;
+    system_clock::time_point start,end;
+    duration<double, std::milli> fp_ms;
+    double duration;
+    double *result_time = new double[attempts];
+    double avg_time;
+    int success_count = 0;
+    for (long long i = 0; i < attempts; i++) {
+        struct ftm_results_wrap *results_wrap =
+                alloc_ftm_results_wrap(config);
+        start = system_clock::now();
+        err = start_ftm(state, config);
+        if (err) {
+            fprintf(stderr, "Fail to start ftm!\n");
+            goto handle_free;
+        }
+
+        err = listen_ftm_result(state, results_wrap);
+        if (err) {
+            fprintf(stderr, "Fail to listen!\n");
+            goto handle_free;
+        }
+        end = system_clock::now();
+        fp_ms = end - start;
+        duration = fp_ms.count();
+        if (results_wrap->results[0]->rtt_avg != 0) {
+            success_count++;
+        }
+//        if (handler)
+//            handler(results_wrap, attempts, i, arg);
+//        else
+//            print_ftm_results(results_wrap, attempts, i, NULL);
+//        printf("%.3fms\n", duration);
+        result_time[i] = duration;
+        free_ftm_results_wrap(results_wrap);
+        continue;
+        handle_free:
+        free_ftm_results_wrap(results_wrap);
+        return 1;
+    }
+    double total_time = 0;
+    for (int i = 0; i < attempts; i++) {
+        total_time += result_time[i];
+    }
+    std::cout << "stats: " << success_count / (double) attempts << " " << total_time / attempts << "ms \n";
+}
+
 int ftm(struct ftm_config *config, ftm_result_handler handler,
         int attempts, void *arg) {
     struct nl80211_state nlstate;
@@ -288,43 +388,30 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
         fprintf(stderr, "Fail to allocate socket!\n");
         return 1;
     }
-    double duration;
-    for (int j = 0; j < 32; j++) {
-        printf("ftms_per_burst=%d\n", j);
-        for (long long i = 0; i < attempts; i++) {
+    struct ftm_config *config_copy = (ftm_config *) malloc(sizeof(ftm_config));
+    memcpy(config_copy, config, sizeof(ftm_config));
+    struct ftm_peer_attr *attr_copy = (ftm_peer_attr *) malloc(sizeof(ftm_peer_attr));
+    memcpy(attr_copy, config->peers[0], sizeof(ftm_peer_attr));
+    attr_copy->ftms_per_burst = 7;
+//   attr_copy->num_ftmr_retries = 10;
 
-            auto start = std::chrono::system_clock::now();
+#define __TEST_ATTR(name, min_val, max_val)                 \
+    do {                                                    \
+        printf("\n\n\nTESTING ARGUMENT " #name "\n\n"); \
+        for (int __i = min_val; __i <= max_val; __i++) {    \
+            memcpy(config->peers[0], attr_copy, sizeof (ftm_peer_attr)) ; \
+            config->peers[0]->name = __i;                   \
+            config->peers[0]->flags[FTM_PEER_FLAG_##name] = 1; \
+            printf("\n" #name " = %d\n", __i);                \
+            ftm_test(&nlstate, config, handler, attempts, arg);       \
+        }                                                   \
+    } while (0)
 
-            struct ftm_results_wrap *results_wrap =
-                    alloc_ftm_results_wrap(config);
+    __TEST_ATTR(num_bursts_exp, 0, 15);
+    __TEST_ATTR(burst_period, 0, 20);
+    __TEST_ATTR(burst_duration, 2, 11);
+    __TEST_ATTR(ftms_per_burst, 0, 15);
+    __TEST_ATTR(num_ftmr_retries, 0, 31);
 
-            config->peers[0]->ftms_per_burst =            config->peers[0]->num_bursts_exp = 2;
-            err = start_ftm(&nlstate, config);
-            if (err) {
-                fprintf(stderr, "Fail to start ftm!\n");
-//                goto handle_free;
-            }
-
-            err = listen_ftm_result(&nlstate, results_wrap);
-            if (err) {
-                fprintf(stderr, "Fail to listen!\n");
-//                goto handle_free;
-            }
-            auto end = std::chrono::system_clock::now();
-            auto duration = duration_cast<std::chrono::microseconds>(end - start);
-            double duration_ms = double(duration.count()) * std::chrono::microseconds::period::num /
-                                 std::chrono::microseconds::period::den;
-//            if (handler)
-//                handler(results_wrap, attempts, i, arg);
-//            else
-//                print_ftm_results(results_wrap, attempts, i, NULL);
-            printf("%ld %fs\n", results_wrap->results[0]->rtt_avg, duration_ms);
-            free_ftm_results_wrap(results_wrap);
-            continue;
-            handle_free:
-            free_ftm_results_wrap(results_wrap);
-            return 1;
-        }
-    }
     return 0;
 }

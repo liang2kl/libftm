@@ -3,9 +3,24 @@
 #define SOL 299492458
 #define RTT_TO_DIST(rtt) ((float)rtt * SOL / 1000000000000)
 
+//static void custom_result_handler(struct ftm_results_wrap *results,
+//                                  int attempts, int attempt_idx, void *arg) {
+//    printf("\n #%d\n", attempt_idx);
+//    for (int i = 0; i < results->count; i++) {
+//        struct ftm_resp_attr *resp = results->results[i];
+//        if (!resp) {
+//            fprintf(stderr, "Response %d does not exist!", i);
+//            return;
+//        }
+//        if (results->results[i]->flags[FTM_RESP_FLAG_rtt_avg]) {
+//            printf("%f\n", RTT_TO_DIST(results->results[i]->rtt_avg));
+//        }
+
+//    }
+//}
+
 static void custom_result_handler(struct ftm_results_wrap *results,
                                   int attempts, int attempt_idx, void *arg) {
-    printf("\n #%d\n", attempt_idx);
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
         if (!resp) {
@@ -13,11 +28,12 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             return;
         }
         if (results->results[i]->flags[FTM_RESP_FLAG_rtt_avg]) {
-            printf("%f\n", RTT_TO_DIST(results->results[i]->rtt_avg));
+            printf("%.2f\n", RTT_TO_DIST(results->results[i]->rtt_avg));
+        } else {
+            printf("NULL\n");
         }
     }
 }
-
 int my_start_ftm(int argc, char **argv) {
     /* parse the arguments */
     if (argc != 4 && argc != 3) {
