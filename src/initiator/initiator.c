@@ -179,10 +179,10 @@ int my_start_ftm(int argc, char **argv) {
         FILE *output = fopen(logfile_name, "w");
         for (int j = 0; j < attempts; j++) {
             fprintf(output, "%ld %lu %lu %d\n",
-                    stats[0]->results[i].rtt_avg,
-                    stats[0]->results[i].rtt_variance,
-                    stats[0]->results[i].rtt_spread,
-                    stats[0]->results[i].rssi_avg);
+                    stats[i]->results[j].rtt_avg,
+                    stats[i]->results[j].rtt_variance,
+                    stats[i]->results[j].rtt_spread,
+                    stats[i]->results[j].rssi_avg);
         }
     }
 
