@@ -96,7 +96,10 @@ static void custom_result_handler(struct ftm_results_wrap *results,
                    RTT_TO_DIST(corrected_rtt));
             line_count += 2;
         }
-
+        if (resp->flags[FTM_RESP_FLAG_dist_truth]) {
+            printf("%-19s%ld\n", "rtt_corrected_val", rtt_corrected_value);
+            line_count += 1;
+        }
     }
     if (attempt_idx == attempts - 1)
         return;
@@ -153,7 +156,6 @@ int my_start_ftm(int argc, char **argv) {
     char time_buffer[60];
     tm_info = localtime(&timer);
     strftime(time_buffer, 60, "%Y-%m-%d %H:%M:%S", tm_info);
-
 
     char logfile_name[120];
     strcat(logfile_name, time_buffer);

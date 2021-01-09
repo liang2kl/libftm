@@ -87,7 +87,7 @@ struct ftm_peer_attr {
 
     /* extra attributes */
     int64_t rtt_correct;
-    int64_t dist_truth;
+    float dist_truth;
 
     /* internal use */
     uint8_t flags[FTM_PEER_FLAG_MAX];
@@ -161,7 +161,7 @@ struct ftm_resp_attr {
 
     /* extra attributes */
     uint64_t rtt_correct;
-    int64_t dist_truth;
+    float dist_truth;
     /* internal use */
     uint8_t flags[FTM_RESP_FLAG_MAX];
 };
