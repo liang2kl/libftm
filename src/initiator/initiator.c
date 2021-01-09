@@ -1,7 +1,9 @@
 #include "initiator.h"
+#include <time.h>
 
 #define SOL 299492458
 #define RTT_TO_DIST(rtt) ((float)(rtt) * SOL / 1000000000000)
+#define DIST_TO_RTT(dist) (dist * 1000000000000 / SOL)
 #define RELATIVE_DIFF(ori, new) (abs((float)(new - ori) / ori))
 
 static void custom_result_handler(struct ftm_results_wrap *results,
@@ -14,7 +16,11 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             fprintf(stderr, "Response %d does not exist!", i);
             return;
         }
-
+        if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
+            stats[i]->rtt_values[attempt_idx] = resp->rtt_avg;
+        } else {
+            stats[i]->rtt_values[attempt_idx] = 0;
+        }
         if (resp->flags[FTM_RESP_FLAG_rtt_avg] && resp->rtt_avg) {
             const int threshold = 20;
             float rate = stats[i]->rtt_measure_count > threshold ? 0.1 : 0.3;
@@ -56,10 +62,14 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         printf("\n----Processed data----\n");
         float dist = 0;
         float corrected_dist = 0;
+        int64_t rtt_corrected_value = 0;
         if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
             dist = RTT_TO_DIST(resp->rtt_avg);
             if (resp->flags[FTM_RESP_FLAG_rtt_correct]) {
                 corrected_dist = RTT_TO_DIST(resp->rtt_avg + resp->rtt_correct);
+            }
+            if (resp->flags[FTM_RESP_FLAG_dist_truth]) {
+                rtt_corrected_value = DIST_TO_RTT(dist - resp->dist_truth);
             }
         }
         printf("%-19s%.3f\n", "dist", dist);
@@ -85,6 +95,10 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             printf("%-19s%-7.3f\n", "corrected_dist_avg",
                    RTT_TO_DIST(corrected_rtt));
             line_count += 2;
+        }
+        if (resp->flags[FTM_RESP_FLAG_dist_truth]) {
+            printf("%-19s%ld\n", "rtt_corrected_val", rtt_corrected_value);
+            line_count += 1;
         }
     }
     if (attempt_idx == attempts - 1)
@@ -123,6 +137,7 @@ int my_start_ftm(int argc, char **argv) {
         stats[i] = malloc(sizeof(struct ftm_results_stat));
         stats[i]->rtt_avg_stat = 0;
         stats[i]->rtt_measure_count = 0;
+        stats[i]->rtt_values = malloc(attempts * sizeof(int64_t));
     }
 
     /* 
@@ -130,6 +145,20 @@ int my_start_ftm(int argc, char **argv) {
      * the attempt number we designated, and the pointer to our data
      */
     int err = ftm(config, custom_result_handler, attempts, stats);
+
+    uint8_t *addr = config->peers[0]->mac_addr;
+    unsigned char *addr_str[18];
+    sprintf(addr_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+            addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+    char *time = ctime(NULL);
+    char *file_name;
+    strcat(file_name, time);
+    strcat(file_name, "_");
+    strcat(file_name, addr_str);
+    FILE *output = fopen(file_name, "w");
+    for (int i = 0; i < attempts; i++) {
+        fprintf(output, "%ld\n", stats[0]->rtt_values[i]);
+    }
     if (err)
         fprintf(stderr, "FTM measurement failed!\n");
 

@@ -58,6 +58,7 @@ static int parse_peer_config(struct ftm_peer_attr *attr, char *str) {
         __SET_ATTR(burst_duration, 14, burst_duration);
         __SET_ATTR(ftms_per_burst, 14, ftms_per_burst);
         __SET_ATTR(rtt_correct, 11, rtt_correct);
+        __SET_ATTR(dist_truth, 10, dist_truth);
 
         if (strcmp(pos, "asap") == 0) {
             FTM_PEER_SET_ATTR(attr, asap, 1);
@@ -168,6 +169,7 @@ void print_config(struct ftm_config *config) {
         CONFIG_PRINT(peer, num_ftmr_retries, u);
         CONFIG_PRINT(peer, trigger_based, u);
         CONFIG_PRINT(peer, rtt_correct, ld);
+        CONFIG_PRINT(peer, dist_truth, ld);
     }
     printf("\n--------------\n");
 }

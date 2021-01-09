@@ -20,6 +20,7 @@
  */
 
 struct ftm_results_stat {
+    int64_t *rtt_values;
     int64_t rtt_avg_stat;
     int rtt_measure_count;
 };

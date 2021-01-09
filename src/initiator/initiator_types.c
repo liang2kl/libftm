@@ -58,6 +58,11 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config) {
             results_wrap->results[i]->rtt_correct =
                 config->peers[i]->rtt_correct;
         }
+        if (config->peers[i]->flags[FTM_PEER_FLAG_dist_truth]) {
+            results_wrap->results[i]->flags[FTM_RESP_FLAG_dist_truth] = 1;
+            results_wrap->results[i]->dist_truth =
+                config->peers[i]->dist_truth;
+        }
     }
     results_wrap->count = config->peer_count;
     return results_wrap;

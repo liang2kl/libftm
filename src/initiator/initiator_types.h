@@ -46,6 +46,7 @@ enum ftm_peer_attr_flags {
 
     /* extra attributes */
     FTM_PEER_FLAG_rtt_correct,
+    FTM_PEER_FLAG_dist_truth,
 
     /* keep last */
     FTM_PEER_FLAG_MAX
@@ -86,6 +87,7 @@ struct ftm_peer_attr {
 
     /* extra attributes */
     int64_t rtt_correct;
+    int64_t dist_truth;
 
     /* internal use */
     uint8_t flags[FTM_PEER_FLAG_MAX];
@@ -120,6 +122,7 @@ enum ftm_resp_attr_flags {
 
     /* extra attributes */
     FTM_RESP_FLAG_rtt_correct,
+    FTM_RESP_FLAG_dist_truth,
     /* keep last */
     FTM_RESP_FLAG_MAX
 };
@@ -158,7 +161,7 @@ struct ftm_resp_attr {
 
     /* extra attributes */
     uint64_t rtt_correct;
-
+    int64_t dist_truth;
     /* internal use */
     uint8_t flags[FTM_RESP_FLAG_MAX];
 };
