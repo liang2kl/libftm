@@ -175,6 +175,7 @@ int my_start_ftm(int argc, char **argv) {
         strftime(logfile_name, 60, "%Y-%m-%d-%H:%M:%S", tm_info);
         strcat(logfile_name, "-");
         strcat(logfile_name, addr_str);
+        strcat(logfile_name, "-log.txt");
 
         FILE *output = fopen(logfile_name, "w");
         for (int j = 0; j < attempts; j++) {

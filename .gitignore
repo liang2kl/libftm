@@ -51,7 +51,6 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-
 # VS Code Configurations
 .vscode
 
@@ -63,3 +62,4 @@ ftm
 ftm_config
 !config/
 config
+*-log.txt
