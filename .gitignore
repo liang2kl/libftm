@@ -55,6 +55,7 @@ dkms.conf
 # VS Code Configurations
 .vscode
 
+.idea
 # Other
 .DS_Store
 gdb
