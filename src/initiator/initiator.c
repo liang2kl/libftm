@@ -16,11 +16,22 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             fprintf(stderr, "Response %d does not exist!", i);
             return;
         }
-        if (resp->flags[FTM_RESP_FLAG_rtt_avg]) {
-            stats[i]->rtt_values[attempt_idx] = resp->rtt_avg;
-        } else {
-            stats[i]->rtt_values[attempt_idx] = 0;
-        }
+#define __RECORD_RESULT(name)                                 \
+    do {                                                      \
+        if (resp->flags[FTM_RESP_FLAG_##name]) {              \
+            stats[i]->results[attempt_idx].name = resp->name; \
+        } else {                                              \
+            stats[i]->results[attempt_idx].name = 0;          \
+        }                                                     \
+    } while (0)
+    
+        /* fill output data */
+        __RECORD_RESULT(rtt_avg);
+        __RECORD_RESULT(rtt_variance);
+        __RECORD_RESULT(rtt_spread);
+        __RECORD_RESULT(rssi_avg);
+
+        /* calculate average rtt */
         if (resp->flags[FTM_RESP_FLAG_rtt_avg] && resp->rtt_avg) {
             const int threshold = 20;
             float rate = stats[i]->rtt_measure_count > threshold ? 0.1 : 0.3;
@@ -32,6 +43,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
             }
         }
 
+        /* print original result */
         printf("\nMEASUREMENT RESULT FOR TARGET #%d\n", i);
         line_count += 2;
 #define __FTM_PRINT(attr_name, specifier)      \
@@ -59,6 +71,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         __FTM_PRINT(dist_variance, lu);
         __FTM_PRINT(dist_spread, lu);
 
+        /* print processed result */
         printf("\n----Processed data----\n");
         float dist = 0;
         float corrected_dist = 0;
@@ -104,7 +117,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
     if (attempt_idx == attempts - 1)
         return;
 
-    /* flush output */
+    /* refresh for next output */
     for (int i = 0; i < line_count; i++) {
         printf("\033[A\033[2K");
     }
@@ -137,7 +150,7 @@ int my_start_ftm(int argc, char **argv) {
         stats[i] = malloc(sizeof(struct ftm_results_stat));
         stats[i]->rtt_avg_stat = 0;
         stats[i]->rtt_measure_count = 0;
-        stats[i]->rtt_values = malloc(attempts * sizeof(int64_t));
+        stats[i]->results = malloc(attempts * sizeof(struct recorded_result));
     }
 
     /* 
@@ -145,29 +158,35 @@ int my_start_ftm(int argc, char **argv) {
      * the attempt number we designated, and the pointer to our data
      */
     int err = ftm(config, custom_result_handler, attempts, stats);
-
-    uint8_t *addr = config->peers[0]->mac_addr;
-    unsigned char addr_str[25];
-    sprintf(addr_str, "%02x:%02x:%02x:%02x:%02x:%02x",
-            addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-    time_t timer = time(NULL);
-
-    struct tm* tm_info;
-    char time_buffer[60];
-    tm_info = localtime(&timer);
-    strftime(time_buffer, 60, "%Y-%m-%d %H:%M:%S", tm_info);
-
-    char logfile_name[120];
-    strcat(logfile_name, time_buffer);
-    strcat(logfile_name, "_");
-    strcat(logfile_name, addr_str);
-    FILE *output = fopen(logfile_name, "w");
-    for (int i = 0; i < attempts; i++) {
-        fprintf(output, "%ld\n", stats[0]->rtt_values[i]);
-    }
-    if (err)
+    if (err) {
         fprintf(stderr, "FTM measurement failed!\n");
+        goto clean_up;
+    }
 
+    for (int i = 0; i < config->peer_count; i++) {
+        uint8_t *addr = config->peers[i]->mac_addr;
+        unsigned char addr_str[25];
+        sprintf(addr_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+                addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+        time_t timer = time(NULL);
+        struct tm *tm_info;
+        char logfile_name[120];
+        tm_info = localtime(&timer);
+        strftime(logfile_name, 60, "%Y-%m-%d-%H:%M:%S", tm_info);
+        strcat(logfile_name, "-");
+        strcat(logfile_name, addr_str);
+
+        FILE *output = fopen(logfile_name, "w");
+        for (int j = 0; j < attempts; j++) {
+            fprintf(output, "%ld %lu %lu %d\n",
+                    stats[0]->results[i].rtt_avg,
+                    stats[0]->results[i].rtt_variance,
+                    stats[0]->results[i].rtt_spread,
+                    stats[0]->results[i].rssi_avg);
+        }
+    }
+
+clean_up:
     /* clean up */
     for (int i = 0; i < config->peer_count; i++) {
         free(stats[i]);
