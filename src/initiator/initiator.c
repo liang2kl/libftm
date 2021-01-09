@@ -96,10 +96,7 @@ static void custom_result_handler(struct ftm_results_wrap *results,
                    RTT_TO_DIST(corrected_rtt));
             line_count += 2;
         }
-        if (resp->flags[FTM_RESP_FLAG_dist_truth]) {
-            printf("%-19s%ld\n", "rtt_corrected_val", rtt_corrected_value);
-            line_count += 1;
-        }
+
     }
     if (attempt_idx == attempts - 1)
         return;
@@ -147,15 +144,22 @@ int my_start_ftm(int argc, char **argv) {
     int err = ftm(config, custom_result_handler, attempts, stats);
 
     uint8_t *addr = config->peers[0]->mac_addr;
-    unsigned char *addr_str[18];
+    unsigned char addr_str[25];
     sprintf(addr_str, "%02x:%02x:%02x:%02x:%02x:%02x",
             addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-    char *time = ctime(NULL);
-    char *file_name;
-    strcat(file_name, time);
-    strcat(file_name, "_");
-    strcat(file_name, addr_str);
-    FILE *output = fopen(file_name, "w");
+    time_t timer = time(NULL);
+
+    struct tm* tm_info;
+    char time_buffer[60];
+    tm_info = localtime(&timer);
+    strftime(time_buffer, 60, "%Y-%m-%d %H:%M:%S", tm_info);
+
+
+    char logfile_name[120];
+    strcat(logfile_name, time_buffer);
+    strcat(logfile_name, "_");
+    strcat(logfile_name, addr_str);
+    FILE *output = fopen(logfile_name, "w");
     for (int i = 0; i < attempts; i++) {
         fprintf(output, "%ld\n", stats[0]->rtt_values[i]);
     }
