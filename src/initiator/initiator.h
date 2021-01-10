@@ -19,7 +19,15 @@
  * the APIs.
  */
 
+struct recorded_result {
+    int64_t rtt_avg;
+    uint64_t rtt_variance;
+    uint64_t rtt_spread;
+    int32_t rssi_avg;
+};
+
 struct ftm_results_stat {
+    struct recorded_result *results;
     int64_t *rtt_values;
     int64_t rtt_avg_stat;
     int rtt_measure_count;

@@ -290,7 +290,10 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
     for (long long i = 0; i < attempts; i++) {
         struct ftm_results_wrap *results_wrap =
             alloc_ftm_results_wrap(config);
-
+        if (!results_wrap) {
+            fprintf(stderr, "Fail to allocate results_wrap!\n");
+            return 1;
+        }
         err = start_ftm(&nlstate, config);
         if (err) {
             fprintf(stderr, "Fail to start ftm!\n");
