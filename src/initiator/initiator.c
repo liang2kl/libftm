@@ -31,16 +31,10 @@ static void custom_result_handler(struct ftm_results_wrap *results,
         __RECORD_RESULT(rtt_spread);
         __RECORD_RESULT(rssi_avg);
 
-        /* calculate average rtt */
+        /* calculate average rtt, filtering out 0 */
         if (resp->flags[FTM_RESP_FLAG_rtt_avg] && resp->rtt_avg) {
-            const int threshold = 20;
-            float rate = stats[i]->rtt_measure_count > threshold ? 0.1 : 0.3;
-            if (stats[i]->rtt_measure_count <= 10 ||
-                RELATIVE_DIFF(((float)stats[i]->rtt_avg_stat / stats[i]->rtt_measure_count),
-                              resp->rtt_avg) <= rate) {
-                stats[i]->rtt_avg_stat += resp->rtt_avg;
-                stats[i]->rtt_measure_count++;
-            }
+            stats[i]->rtt_avg_stat += resp->rtt_avg;
+            stats[i]->rtt_measure_count++;
         }
 
         /* print original result */
@@ -143,6 +137,7 @@ int my_start_ftm(int argc, char **argv) {
         return 1;
     }
     print_config(config);
+    
     /* initialize our data */
     struct ftm_results_stat **stats =
         malloc(config->peer_count * sizeof(struct ftm_results_stat *));

@@ -86,7 +86,7 @@ static int start_ftm(struct nl80211_state *state,
 
     genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 0,
                 NL80211_CMD_PEER_MEASUREMENT_START, 0);
-    
+
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, config->interface_index);
 
     err = set_ftm_config(msg, config);
@@ -106,10 +106,10 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
     struct ftm_results_wrap *results_wrap = cb_arg->arg;
     if (gnlh->cmd == NL80211_CMD_PEER_MEASUREMENT_COMPLETE) {
         *cb_arg->state = 0;
-        return -1;
+        return NL_OK;
     }
     if (gnlh->cmd != NL80211_CMD_PEER_MEASUREMENT_RESULT)
-        return -1;
+        return NL_SKIP;
 
     struct nlattr *tb[NL80211_ATTR_MAX + 1];
     int err;
@@ -118,25 +118,25 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
               genlmsg_attrlen(gnlh, 0), NULL);
 
     if (!tb[NL80211_ATTR_COOKIE]) {
-		printf("Peer measurements: no cookie!\n");
-		return -1;
-	}
+        printf("Peer measurements: no cookie!\n");
+        return NL_SKIP;
+    }
 
     if (!tb[NL80211_ATTR_PEER_MEASUREMENTS]) {
-		printf("Peer measurements: no measurement data!\n");
-		return -1;
-	}
+        printf("Peer measurements: no measurement data!\n");
+        return NL_SKIP;
+    }
 
     struct nlattr *pmsr[NL80211_PMSR_ATTR_MAX + 1];
     err = nla_parse_nested(pmsr, NL80211_PMSR_ATTR_MAX,
                            tb[NL80211_ATTR_PEER_MEASUREMENTS],
                            NULL);
     if (err)
-        return -1;
+        return NL_SKIP;
 
     if (!pmsr[NL80211_PMSR_ATTR_PEERS]) {
         printf("Peer measurements: no peer data!\n");
-        return -1;
+        return NL_SKIP;
     }
 
     struct nlattr *peer, **resp;
@@ -152,36 +152,36 @@ static int handle_ftm_result(struct nl_msg *msg, void *arg) {
                                peer, NULL);
         if (err) {
             fprintf(stderr, "Peer: failed to parse!\n");
-            return 1;
+            return NL_SKIP;
         }
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_ADDR]) {
             fprintf(stderr, "Peer: no MAC address\n");
-            return 1;
+            return NL_SKIP;
         }
 
         if (!peer_tb[NL80211_PMSR_PEER_ATTR_RESP]) {
             fprintf(stderr, "No response!\n");
-            return 1;
+            return NL_SKIP;
         }
 
         err = nla_parse_nested(resp, NL80211_PMSR_RESP_ATTR_MAX,
                                peer_tb[NL80211_PMSR_PEER_ATTR_RESP], NULL);
         if (err) {
             fprintf(stderr, "Failed to parse response!\n");
-            return 1;
+            return NL_SKIP;
         }
 
         err = nla_parse_nested(data, NL80211_PMSR_TYPE_MAX,
-                               resp[NL80211_PMSR_RESP_ATTR_DATA], 
+                               resp[NL80211_PMSR_RESP_ATTR_DATA],
                                NULL);
         if (err)
-            return 1;
+            return NL_SKIP;
 
         err = nla_parse_nested(ftm, NL80211_PMSR_FTM_RESP_ATTR_MAX,
                                data[NL80211_PMSR_TYPE_FTM], NULL);
         if (err)
-            return 1;
-        
+            return NL_SKIP;
+
         struct ftm_resp_attr *resp_attr = results_wrap->results[index];
 
         /* 
@@ -245,7 +245,7 @@ static int listen_ftm_result(struct nl80211_state *state,
     return err;
 }
 
-static void print_ftm_results(struct ftm_results_wrap *results, 
+static void print_ftm_results(struct ftm_results_wrap *results,
                               uint attempts, uint attemp_idx, void *arg) {
     for (int i = 0; i < results->count; i++) {
         struct ftm_resp_attr *resp = results->results[i];
