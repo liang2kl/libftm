@@ -161,13 +161,13 @@ int my_start_ftm(int argc, char **argv) {
     for (int i = 0; i < config->peer_count; i++) {
         uint8_t *addr = config->peers[i]->mac_addr;
         unsigned char addr_str[25];
-        sprintf(addr_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+        sprintf(addr_str, "%02x_%02x_%02x_%02x_%02x_%02x",
                 addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
         time_t timer = time(NULL);
         struct tm *tm_info;
         char logfile_name[120];
         tm_info = localtime(&timer);
-        strftime(logfile_name, 60, "%Y-%m-%d-%H:%M:%S", tm_info);
+        strftime(logfile_name, 60, "%Y%m%d_%H%M", tm_info);
         strcat(logfile_name, "-");
         strcat(logfile_name, addr_str);
         strcat(logfile_name, "-log.txt");

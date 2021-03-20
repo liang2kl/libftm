@@ -64,3 +64,5 @@ ftm_config
 !config/
 config
 *-log.txt
+build
+cmake-build-debug

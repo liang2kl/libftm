@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * struct ftm_config - Config used to start FTM
  * 
@@ -173,7 +176,7 @@ struct ftm_resp_attr {
  * @count: number of responses (equal to the number of peers)
  */
 struct ftm_results_wrap {
-    struct ftm_resp_attr ** results;
+    struct ftm_resp_attr **results;
     int count;
 };
 
@@ -280,4 +283,8 @@ struct ftm_results_wrap *alloc_ftm_results_wrap(struct ftm_config *config);
  * You don't need to free on your own.
  */
 void free_ftm_results_wrap(struct ftm_results_wrap *wrap);
+
+#ifdef __cplusplus
+}
+#endif
 #endif /*_TYPES_H*/

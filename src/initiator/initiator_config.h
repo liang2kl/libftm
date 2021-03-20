@@ -4,6 +4,10 @@
 #include "initiator_types.h"
 #include <stdio.h>
 #include "../nl/nl.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * DOC: Format of ftm config file
  * 
@@ -50,4 +54,8 @@ struct ftm_config *parse_config_file(const char *file_name,
     } while (0)
 
 void print_config(struct ftm_config *config);
+
+#ifdef __cplusplus
+}
+#endif
 #endif /*_FTM_CONFIG_H*/

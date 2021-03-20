@@ -1,8 +1,12 @@
 #ifndef _FTM_INITIATOR_H
 #define _FTM_INITIATOR_H
+
 #include "initiator_config.h"
 #include "initiator_start.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * DOC: Define your own data types and functions to start FTM and handle
  * the results
@@ -34,4 +38,9 @@ struct ftm_results_stat {
 };
 
 int my_start_ftm(int argc, char **argv);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

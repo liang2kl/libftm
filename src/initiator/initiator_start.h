@@ -3,7 +3,9 @@
 
 #include "../nl/nl.h"
 #include "initiator_types.h"
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * DOC: Start a fine timing measurement
  * 
@@ -188,5 +190,7 @@ int ftm(struct ftm_config *config, ftm_result_handler handler,
                "mac_addr", addr[0], addr[1], addr[2], addr[3],     \
                addr[4], addr[5]);                                  \
     }
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* _FTM_INITIATOR_START_H */
